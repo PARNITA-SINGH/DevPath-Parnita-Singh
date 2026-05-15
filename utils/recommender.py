@@ -16,12 +16,39 @@ WEIGHT_INTEREST = 2   # Interest alignment improves recommendation relevance
 WEIGHT_TIME    = 1    # Time availability acts as a smaller tie-breaker factor
 
 
+# Common aliases and abbreviations for skills
+# This improves recommendation accuracy by normalizing user input
+SKILL_ALIASES = {
+    "js": "javascript",
+    "py": "python",
+    "html5": "html",
+    "css3": "css",
+    "c++": "cpp",
+    "web dev": "javascript"
+}
+
+
 def parse_skills(skills_string):
     """
-    Convert a raw comma-separated skills string into a clean lowercase list.
-    Example: "Python, HTML, CSS" -> ["python", "html", "css"]
+    Convert a raw comma-separated skills string into
+    a normalized lowercase list.
+
+    Example:
+    "JS, HTML5, CSS3" -> ["javascript", "html", "css"]
     """
-    return [s.strip().lower() for s in skills_string.split(",") if s.strip()]
+    
+    raw_skills = [
+        s.strip().lower()
+        for s in skills_string.split(",")
+        if s.strip()
+    ]
+
+    normalized_skills = [
+        SKILL_ALIASES.get(skill, skill)
+        for skill in raw_skills
+    ]
+
+    return normalized_skills
 
 
 def score_single_project(project, user_skills, level, interest, time_availability):
