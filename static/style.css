@@ -2243,14 +2243,12 @@ select:focus {
 }
 
 .code-viewer {
-  flex: 1;
-  overflow: auto;
-  padding: 24px 28px;
+  flex: 1; overflow: auto;
+  padding: 16px 0;
   font-family: var(--font-mono);
   font-size: 0.83rem;
   line-height: 1.75;
   color: #e6edf3;
-  white-space: pre;
   background: transparent;
 }
 
@@ -2480,4 +2478,32 @@ select:focus {
 
 #scroll-top-btn.visible {
   display: flex;
+}
+
+
+/* Line-numbered code rows */
+.code-line {
+  display: flex;
+  align-items: flex-start;
+  min-height: 1.75em;
+}
+
+.line-number {
+  display: inline-block;
+  min-width: 44px;
+  padding-right: 16px;
+  text-align: right;
+  color: rgba(255, 255, 255, 0.2);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  margin-right: 16px;
+  user-select: none;
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  line-height: 1.75;
+}
+
+.line-content {
+  flex: 1;
+  white-space: pre;
+  color: #e6edf3;
 }

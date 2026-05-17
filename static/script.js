@@ -596,6 +596,25 @@ if (isDetailPage) {
     document.body.style.overflow = "";
   }
 
+  function renderCodeWithLineNumbers(code) {
+    var lines = code.split("\n");
+    return lines.map(function (line, i) {
+      var num = document.createElement("span");
+      num.className = "line-number";
+      num.textContent = i + 1;
+
+      var content = document.createElement("span");
+      content.className = "line-content";
+      content.textContent = line;
+
+      var row = document.createElement("div");
+      row.className = "code-line";
+      row.appendChild(num);
+      row.appendChild(content);
+      return row;
+    });
+  }
+
   function fetchStarterCode() {
     // Show a loading message while we wait for the API response
     if (codeContentEl) codeContentEl.textContent = "Loading starter code...";
@@ -608,7 +627,12 @@ if (isDetailPage) {
           return;
         }
         if (codePanelFilename) codePanelFilename.textContent = data.filename;
-        if (codeContentEl) codeContentEl.textContent = data.code;
+        if (codeContentEl) {
+          codeContentEl.textContent = "";
+          renderCodeWithLineNumbers(data.code).forEach(function (row) {
+            codeContentEl.appendChild(row);
+          });
+        }
         // Mark as fetched so we don't hit the API again on the next open
         codeFetched = true;
       })
@@ -675,7 +699,11 @@ if (isDetailPage) {
 
   if (btnCopyCode) {
     btnCopyCode.addEventListener("click", function () {
-      var code = codeContentEl ? codeContentEl.textContent : "";
+      var code = codeContentEl
+        ? Array.from(codeContentEl.querySelectorAll(".line-content"))
+          .map(function (el) { return el.textContent; })
+          .join("\n")
+        : "";
       // Don't copy if the code hasn't loaded yet — just ignore the click
       if (!code || code === "Loading..." || code === "Loading starter code...") return;
 
