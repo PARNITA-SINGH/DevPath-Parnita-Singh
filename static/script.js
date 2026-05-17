@@ -11,8 +11,10 @@
 // ============================================================
 // Detect which page we are on
 // ============================================================
-var isIndexPage  = !!document.getElementById("recommend-form"); // !! converts whatever getElementById returns into true/false if(element) exists then index page, otherwise not
-var isDetailPage = typeof PROJECT_ID !== "undefined"; // PROJECT_ID is a variable set in the detail page's HTML, if exists then detail page
+// !! trick turns the DOM result into a simple true/false
+var isIndexPage  = !!document.getElementById("recommend-form");
+// PROJECT_ID is set by the server only on detail pages, so if it's missing we're elsewhere
+var isDetailPage = typeof PROJECT_ID !== "undefined";
 
 
 // ============================================================
@@ -22,13 +24,15 @@ var isDetailPage = typeof PROJECT_ID !== "undefined"; // PROJECT_ID is a variabl
   var toggle = document.getElementById("nav-mobile-toggle"); //hamburger button
   var menu   = document.getElementById("nav-mobile-menu"); //dropdown menu 
 
-  if (!toggle || !menu) return; //if either element is missing, abort
+  // Nothing to do if the nav isn't on this page, just bail out
+  if (!toggle || !menu) return;
 
-  toggle.addEventListener("click", function () { 
-    //classList.toggle("open") adds "open" if not present, removes if present, and returns true/false so we can use that value for aria-expanded
+  toggle.addEventListener("click", function () {
+    // classList.toggle returns true if class was added, false if removed
     var isOpen = menu.classList.toggle("open");
     toggle.classList.toggle("open", isOpen);
-    toggle.setAttribute("aria-expanded", isOpen); //aria-expanded is for accessibility, indicates whether the menu is open or closed
+    // Keep aria-expanded in sync so screen readers know if menu is open or closed
+    toggle.setAttribute("aria-expanded", isOpen);
   });
 
   // Close menu when any mobile link is clicked
@@ -82,7 +86,8 @@ if (isIndexPage) {
       "C#", "Ruby", "PHP", "Go", "Swift", "TypeScript", "Angular", "Vue.js",
       "Spring", "Flutter", "TensorFlow", "PyTorch", "Data Science",
       "Machine Learning", "Artificial Intelligence", "DevOps", "Cybersecurity",
-      "Blockchain", "UI/UX Design", "Game Development", "CI/CD", "REST API", "GraphQL"
+      "Blockchain", "UI/UX Design", "Game Development", "CI/CD", "REST API", "GraphQL", 
+      "Rust", "Kotlin"
     ];
   }
 
@@ -118,13 +123,11 @@ if (isIndexPage) {
     var matchedSkill = availableSkills.find(function (skill) {
       return normalizeSkill(skill) === normalizedSkill;
     });
-
     return matchedSkill || rawSkill.trim();
   }
 
   function getFilteredSkills(query) {
     var normalizedQuery = normalizeSkill(query);
-
     return availableSkills.filter(function (skill) {
       return normalizeSkill(skill).includes(normalizedQuery) && !isSkillSelected(skill);
     }).slice(0, 8);
@@ -136,7 +139,6 @@ if (isIndexPage) {
 
   function renderActiveSuggestion() {
     if (!suggestionsDiv) return;
-
     suggestionsDiv.querySelectorAll(".suggestion-item").forEach(function (item, index) {
       var isActive = index === activeSuggestionIndex;
       item.classList.toggle("suggestion-item--active", isActive);
@@ -147,12 +149,10 @@ if (isIndexPage) {
   function hideSuggestions() {
     visibleSuggestions = [];
     activeSuggestionIndex = -1;
-
     if (suggestionsDiv) {
       suggestionsDiv.style.display = "none";
       suggestionsDiv.innerHTML = "";
     }
-
     syncSuggestionsA11yState();
   }
 
@@ -165,15 +165,12 @@ if (isIndexPage) {
 
   function displaySuggestions(items) {
     if (!suggestionsDiv) return;
-
     visibleSuggestions = items;
     activeSuggestionIndex = -1;
-
     if (items.length === 0) {
       hideSuggestions();
       return;
     }
-
     suggestionsDiv.innerHTML = "";
     items.forEach(function (skill, index) {
       var item = document.createElement("div");
@@ -199,7 +196,6 @@ if (isIndexPage) {
 
       suggestionsDiv.appendChild(item);
     });
-
     suggestionsDiv.style.display = "block";
     syncSuggestionsA11yState();
   }
@@ -219,9 +215,7 @@ if (isIndexPage) {
       if (visibleSuggestions.length === 0) {
         displaySuggestions(getFilteredSkills(skillsTextInput.value));
       }
-
       if (visibleSuggestions.length === 0) return;
-
       evt.preventDefault();
       if (evt.key === "ArrowDown") {
         activeSuggestionIndex = (activeSuggestionIndex + 1) % visibleSuggestions.length;
@@ -230,7 +224,6 @@ if (isIndexPage) {
           ? visibleSuggestions.length - 1
           : activeSuggestionIndex - 1;
       }
-
       renderActiveSuggestion();
       return;
     }
@@ -241,28 +234,44 @@ if (isIndexPage) {
     }
 
     if (evt.key === "Enter") {
-      evt.preventDefault(); // prevent form submission
-       if (activeSuggestionIndex >= 0 && visibleSuggestions[activeSuggestionIndex]) {
+      evt.preventDefault();
+      if (activeSuggestionIndex >= 0 && visibleSuggestions[activeSuggestionIndex]) {
         selectSuggestion(visibleSuggestions[activeSuggestionIndex]);
         return;
       }
-      var value = skillsTextInput.value.trim();
-      if (value) {
-        addSkill(value);
-        skillsTextInput.value = ""; // clear input after adding
+      if (skillsTextInput.value.trim()) {
+        addSkill(skillsTextInput.value);
+        skillsTextInput.value = "";
+      }
       hideSuggestions();
     }
+  });
+
+  // Add/toggle skill on quick-pick chip click
+  quickPickChips.forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      var skill = chip.getAttribute("data-skill");
+      var isAlreadySelected = selectedSkills.some(function (s) {
+        return s.toLowerCase() === skill.toLowerCase();
+      });
+
+      if (isAlreadySelected) {
+        removeSkill(skill);
+      } else {
+        addSkill(skill);
+      }
+      hideSuggestions();
+      skillsTextInput.value = "";
+    });
   });
 
   // Show suggestions on input
   skillsTextInput.addEventListener("input", function (evt) {
     var typedValue = evt.target.value.trim();
-
     if (typedValue.length === 0) {
       hideSuggestions();
       return;
     }
-
     displaySuggestions(getFilteredSkills(typedValue));
   });
 
@@ -283,14 +292,6 @@ if (isIndexPage) {
     });
   }
 
-  // Add skill on quick-pick chip click
-  quickPickChips.forEach(function (chip) {
-    chip.addEventListener("click", function () {
-      addSkill(chip.getAttribute("data-skill"));
-      hideSuggestions();
-      skillsTextInput.value = "";
-    });
-  });
 
   document.addEventListener("click", function (evt) {
     if (skillWrap && !skillWrap.contains(evt.target)) {
@@ -300,7 +301,9 @@ if (isIndexPage) {
 
   //add a skill to the list if it's not empty or a duplicate
   function addSkill(rawSkill) {
+    // Clean up any extra spaces and match to canonical skill name
     var skill = getCanonicalSkill(rawSkill);
+    // Nothing to add if string is empty after trimming
     if (!skill) return;
 
     // Block duplicate entries (case-insensitive)
@@ -310,15 +313,16 @@ if (isIndexPage) {
     renderSelectedChips();
     syncSkillsHiddenInput();
     updateQuickPickState();
+    // Once a skill is added, remove the "please add a skill" error if it was showing
     clearFieldError("skills-error");
   }
 
   // remove a skill from the list and update the UI accordingly
   function removeSkill(skill) {
+    // Rebuild the array without the skill that was just removed
     selectedSkills = selectedSkills.filter(function (selectedSkill) {
       return normalizeSkill(selectedSkill) !== normalizeSkill(skill);
     });
-
     renderSelectedChips();
     syncSkillsHiddenInput();
     updateQuickPickState();
@@ -327,7 +331,8 @@ if (isIndexPage) {
   // recreate the selected skills chips based on the current array(selectedSkills)
   // called every time we add or remove a skill
   function renderSelectedChips() {
-    chipsSelectedEl.innerHTML = ""; //clear existing chips first
+    // Wipe out old chips first so we don't end up with duplicates in the UI
+    chipsSelectedEl.innerHTML = "";
     selectedSkills.forEach(function (skill) {
       // Create a new chip element for each selected skill
       var chipEl = document.createElement("span");
@@ -341,7 +346,8 @@ if (isIndexPage) {
       removeBtn.innerHTML = "&times;"; //'x' symbol
       removeBtn.setAttribute("aria-label", "Remove " + skill); 
       removeBtn.addEventListener("click", function (e) {
-        e.stopPropagation(); // prevent triggering any parent click handlers
+        // Stop click from bubbling up to the chip wrap's click listener
+        e.stopPropagation();
         removeSkill(skill);
       });
 
@@ -351,7 +357,8 @@ if (isIndexPage) {
   }
 
   function syncSkillsHiddenInput() {
-    // Keep the hidden <input> in sync with the selectedSkills array
+    // Keep the hidden <input> in sync for form serialisation
+    // The API expects a comma-separated string, so join the array that way
     skillsHidden.value = selectedSkills.join(", ");
   }
 
@@ -386,7 +393,7 @@ if (isIndexPage) {
   function validateForm() {
     var valid = true;
 
-    // check skills 
+    // Check both the array and the hidden input since skills can come from either source
     if (selectedSkills.length === 0 && !skillsHidden.value.trim()) {
       showFieldError("skills-error", "Please add at least one skill.");
       valid = false;
@@ -428,10 +435,11 @@ if (isIndexPage) {
 
     //combine form values into an object to send to server/api
     var payload = {
-      skills:   skillsHidden.value.trim() || skillsTextInput.value.trim(), //hidden input or text input(skill isnt entered as chip
+      // Prefer the hidden input value; fall back to raw text box if hidden input is empty
+      skills:   skillsHidden.value.trim() || skillsTextInput.value.trim(),
       level:    document.getElementById("level").value,
       interest: document.getElementById("interest").value,
-      time: document.getElementById("time").value
+      time:     document.getElementById("time").value
     };
 
     //post the data to backend api as JSON, then handle the response
@@ -443,15 +451,11 @@ if (isIndexPage) {
       .then(function (res) { return res.json(); }) //parse the response as JSON
       .then(function (data) {
         setLoadingState(false);
-
-        //the api can send back an error msg instead of results
         if (data.error) {
           var generalErr = document.getElementById("form-error-general");
           if (generalErr) generalErr.textContent = data.error;
           return;
         }
-
-        //data.projects is the array of recommended projects, data.message is an optional message from the API (e.g. "No projects found matching your criteria.")
         renderResults(data.projects || [], data.message);
       })
       .catch(function (err) {
@@ -465,18 +469,19 @@ if (isIndexPage) {
 
   // Manages the loading state of the form and results section(whats visible or not)
   function setLoadingState(isLoading) {
-    submitBtn.disabled = isLoading; //grey out button while loading
-    // Swap button text with loading spinner
-    btnLabel.style.display   = isLoading ? "none"   : "inline";
+    // Disable the button so the user can't accidentally submit twice
+    submitBtn.disabled = isLoading;
+    btnLabel.style.display = isLoading ? "none" : "inline";
     btnLoading.style.display = isLoading ? "inline" : "none";
 
     if (isLoading) {
-      // Show the results section with only the loading indicator visible(other things are hidden)
-      resultsSection.style.display    = "block";
-      resultsLoadingEl.style.display  = "block";
-      resultsGrid.style.display       = "none";
-      resultsEmptyEl.style.display    = "none";
-      resultsSection.scrollIntoView({ behavior: "smooth" }); // scroll down so user can see the loading spinner
+      // Show the results section with only the loading indicator visible
+      resultsSection.style.display = "block";
+      resultsLoadingEl.style.display = "block";
+      resultsGrid.style.display = "none";
+      resultsEmptyEl.style.display = "none";
+      // Scroll down so the user can see the spinner without manually scrolling
+      resultsSection.scrollIntoView({ behavior: "smooth" });
     } else {
       resultsLoadingEl.style.display  = "none";
       resultsGrid.style.display       = "grid"; //switch back to gird layout 
@@ -493,6 +498,7 @@ if (isIndexPage) {
   function renderResults(projects, message) {
     resultsSection.style.display = "block";
     resultsLoadingEl.style.display = "none";
+    // Clear out any cards from a previous search before showing new ones
     resultsGrid.innerHTML = "";
 
     if (!projects || projects.length === 0) { //if no projects returned from api, show the "no results" message and hide the grid
@@ -528,6 +534,7 @@ if (isIndexPage) {
     // Description (truncated for visual consistency)
     var desc = document.createElement("p");
     desc.className = "project-card-desc";
+    // Cut description to 120 chars so all cards stay the same height
     desc.textContent = truncate(project.description, 120);
 
     // Tags row
@@ -540,6 +547,7 @@ if (isIndexPage) {
     });
 
     // Level tag (colour-coded via CSS class)
+    // Lowercase so it matches the CSS class names like "level beginner", "level advanced"
     var levelClass = "level " + (project.level || "").toLowerCase();
     tagsRow.appendChild(createTag(project.level, levelClass));
 
@@ -569,14 +577,17 @@ if (isIndexPage) {
   // helper to create a coloured tag element (used for skills, level, time tags on the cards)
   function createTag(text, type) {
     var span = document.createElement("span");
+    // The type becomes a BEM modifier so CSS can style each tag differently
     span.className = "project-tag project-tag--" + type;
     span.textContent = text;
     return span;
   }
 
   function truncate(text, maxLength) {
+    // Safety check — just return empty string if text is missing
     if (!text) return "";
-    return text.length > maxLength ? text.slice(0, maxLength) + "..." : text; //if text is longer than maxLength, cut it and add "..." at the end, otherwise return the original text
+    // Only add "..." if the text is actually longer than the limit
+    return text.length > maxLength ? text.slice(0, maxLength) + "..." : text;
   }
 
 } // end isIndexPage
@@ -600,12 +611,15 @@ if (isDetailPage) {
 
   //opens the sliding code panel 
   function openCodePanel() {
+    // Panel element might not exist on every detail page, so check first
     if (!codePanel) return;
     codePanel.classList.add("active");
-    if (codePanelOverlay) codePanelOverlay.classList.add("active"); // show the background overlay
-    document.body.style.overflow = "hidden"; // prevent background scrolling when panel is open
+    if (codePanelOverlay) codePanelOverlay.classList.add("active");
+    // Lock background scroll so the page doesn't scroll behind the panel
+    document.body.style.overflow = "hidden";
 
-    if (!codeFetched) fetchStarterCode(); // only fetch the code from server one time - after that code is already in the DOM
+    // Only fetch the code on the first open, no need to re-fetch every time
+    if (!codeFetched) fetchStarterCode();
   }
 
   //closes the code panel and hides the overlay
@@ -613,12 +627,14 @@ if (isDetailPage) {
     if (!codePanel) return;
     codePanel.classList.remove("active");
     if (codePanelOverlay) codePanelOverlay.classList.remove("active");
+    // Restore normal scrolling once the panel is closed
     document.body.style.overflow = "";
   }
 
   //fetches the starter code from the server via an API call
   //inserts the code into the panel and handles loading/error states
   function fetchStarterCode() {
+    // Show a loading message while we wait for the API response
     if (codeContentEl) codeContentEl.textContent = "Loading starter code...";
 
     fetch("/project/" + PROJECT_ID + "/code")
@@ -628,9 +644,10 @@ if (isDetailPage) {
           if (codeContentEl) codeContentEl.textContent = "Error: " + data.error;
           return;
         }
-        if (codePanelFilename) codePanelFilename.textContent = data.filename; //show the filename at the top of the panel
-        if (codeContentEl)     codeContentEl.textContent     = data.code; //insert the code into the <pre> element in the panel
-        codeFetched = true; //mark as loaded so we dont fetch again next time the panel opens
+        if (codePanelFilename) codePanelFilename.textContent = data.filename;
+        if (codeContentEl) codeContentEl.textContent = data.code;
+        // Mark as fetched so we don't hit the API again on the next open
+        codeFetched = true;
       })
       .catch(function () {
         if (codeContentEl) {
@@ -648,6 +665,7 @@ if (isDetailPage) {
     codePanelOverlay.addEventListener("click", closeCodePanel); //clicking on the background overlay to also close the panel
   }
 
+  // Let keyboard users close the panel with Escape — important for accessibility
   document.addEventListener("keydown", function (evt) {
     if (evt.key === "Escape") closeCodePanel(); //esc key to close
   });
@@ -672,7 +690,8 @@ if (isDetailPage) {
     if (checkIcon) checkIcon.style.display = "inline";
     if (btnLabel)  btnLabel.textContent    = "Copied!";
     btnCopyCode.classList.add("copied");
-    btnCopyCode.disabled = true; //prevent multiple clicks while in copied state
+    // Disable button so user can't spam click it while toast is showing
+    btnCopyCode.disabled = true;
 
     // Show toast
     if (copyToast) {
@@ -680,6 +699,7 @@ if (isDetailPage) {
     }
 
     // Auto-reset after 2.5 s
+    // Clear any previous timeout first so timers don't stack up
     clearTimeout(toastTimeout);
     toastTimeout = setTimeout(function () {
       if (copyIcon)  copyIcon.style.display  = "inline";
@@ -694,7 +714,7 @@ if (isDetailPage) {
   if (btnCopyCode) {
     btnCopyCode.addEventListener("click", function () {
       var code = codeContentEl ? codeContentEl.textContent : "";
-      // Don't attempt to copy if code is empty or still loading
+      // Don't copy if the code hasn't loaded yet — just ignore the click
       if (!code || code === "Loading..." || code === "Loading starter code...") return;
 
       // Use Clipboard API with textarea fallback
@@ -710,14 +730,46 @@ if (isDetailPage) {
 
   // Fallback method to copy text using a hidden textarea and execCommand (for older browsers)
   function fallbackCopy(text) {
+    // Some older browsers don't support navigator.clipboard, so we use a hidden textarea instead
     var ta = document.createElement("textarea");
     ta.value = text;
+    // Push it off-screen so it's not visible but can still be selected
     ta.style.cssText = "position:fixed;top:-9999px;left:-9999px;opacity:0";
     document.body.appendChild(ta);
-    ta.focus(); // focus the textarea so that execCommand can work
-    ta.select(); // select the text inside the textarea
-    try { document.execCommand("copy"); showCopySuccess(); } catch (e) { /* silent fail */ } // execCommand can throw an error if it fails
-    document.body.removeChild(ta); // clean up the DOM by removing the textarea after copying
+    ta.focus();
+    ta.select();
+    // execCommand is old and deprecated but works as a last resort — fail silently if it doesn't
+    try { document.execCommand("copy"); showCopySuccess(); } catch (e) { /* silent fail */ }
+    document.body.removeChild(ta);
   }
-
 } // end isDetailPage
+
+
+/* ---- Scroll-to-top button ---- */
+
+/* Show the button only when the user has scrolled more than 300px */
+var SCROLL_THRESHOLD = 300;
+
+/* Get the button element; guard against pages that do not have it */
+var scrollTopBtn = document.getElementById('scroll-top-btn');
+
+/* Add or remove the .visible class based on scroll position */
+function handleScroll() {
+    if (!scrollTopBtn) return;
+    if (window.pageYOffset > SCROLL_THRESHOLD) {
+        scrollTopBtn.classList.add('visible');
+    } else {
+        scrollTopBtn.classList.remove('visible');
+    }
+}
+
+/* Smooth-scroll to the very top of the page */
+function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* Only wire up listeners if the button exists on this page */
+if (scrollTopBtn) {
+    window.addEventListener('scroll', handleScroll);
+    scrollTopBtn.addEventListener('click', scrollToTop);
+}
