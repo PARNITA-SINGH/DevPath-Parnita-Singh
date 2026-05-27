@@ -33,6 +33,10 @@ def index():
     stats = get_project_stats()
     return render_template("index.html", stats=stats)
 
+@main.route("/contact")
+def contact():
+    return render_template("contact.html")
+
 @main.route("/health")
 def health_check():
     """
