@@ -191,12 +191,23 @@ var errorMsg = document.getElementById('github-modal-error');
 // Lenis Smooth Scrolling Initialization (runs on all pages)
 // ============================================================
 (function initLenis() {
-  // Check if Lenis is available
-  if (typeof Lenis === 'undefined') return;
+  // Respect user's motion preferences for accessibility
+  var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   
-  const lenis = new Lenis({
+  // Don't initialize smooth scrolling if user prefers reduced motion
+  if (prefersReducedMotion.matches) {
+    return;
+  }
+  
+  // Check if Lenis is available (CDN loaded successfully)
+  if (typeof Lenis === 'undefined') {
+    console.warn('Lenis library not loaded. Smooth scrolling disabled.');
+    return;
+  }
+  
+  var lenis = new Lenis({
     duration: 1.2,
-    easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+    easing: function(t) { return Math.min(1, 1.001 - Math.pow(2, -10 * t)); },
     smoothWheel: true,
     smoothTouch: false
   });
@@ -208,14 +219,14 @@ var errorMsg = document.getElementById('github-modal-error');
   
   requestAnimationFrame(raf);
 
-  // Integrate with anchor links
-  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  // Integrate with anchor links for smooth navigation
+  document.querySelectorAll('a[href^="#"]').forEach(function(anchor) {
     anchor.addEventListener('click', function (e) {
-      const href = this.getAttribute('href');
+      var href = this.getAttribute('href');
       if (href === '#') return;
       
       e.preventDefault();
-      const target = document.querySelector(href);
+      var target = document.querySelector(href);
       if (target) {
         lenis.scrollTo(target, {
           offset: 0,
@@ -223,6 +234,13 @@ var errorMsg = document.getElementById('github-modal-error');
         });
       }
     });
+  });
+  
+  // Listen for preference changes (user changes system settings while page is open)
+  prefersReducedMotion.addEventListener('change', function() {
+    if (prefersReducedMotion.matches) {
+      lenis.destroy();
+    }
   });
 })();
 
