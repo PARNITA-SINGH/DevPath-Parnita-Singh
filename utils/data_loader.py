@@ -62,6 +62,10 @@ def load_all_projects():
         validate_projects(_projects_cache)
     return _projects_cache
 
+def get_available_levels():
+    """Return all unique project levels."""
+    projects = load_all_projects()
+    return sorted({p["level"] for p in projects})
 
 def find_project_by_id(project_id):
     """
