@@ -487,7 +487,64 @@ updateProfileWidgets();
 
     var title = document.createElement("h3");
     title.className = "project-card-title";
-    title.textContent = project.title;
+    title.textContent = project.title;  // display the project name as the card heading
+
+    // -----------------------------------------------------------------------
+    // CHANGE: Score Badge — displays "Match Score X.X / 10" on the project card
+    // REASON: The issue asked for a score out of 10 next to each recommended
+    //         project so users can instantly see how well it matches their input.
+    //         The score value comes from the API response field "match_score"
+    //         that was added to utils/recommender.py.
+    // -----------------------------------------------------------------------
+    if (typeof project.match_score === "number") {
+      // REASON: Only build the badge if the API actually returned a match_score.
+      //         This makes the code safe — if the field is missing for any reason,
+      //         the card still renders normally without crashing.
+
+      // Create the outer container div that holds the label, number, and bar
+      var scoreBadge = document.createElement("div");
+      scoreBadge.className = "project-match-score"; // CSS class defined in style.css for layout/spacing
+      // REASON: aria-label makes the score readable by screen readers (accessibility)
+      scoreBadge.setAttribute("aria-label", "Match score: " + project.match_score + " out of 10");
+
+      // Create the "Match Score" text label shown on the left side of the badge
+      var scoreLabel = document.createElement("span");
+      scoreLabel.className = "score-label"; // styled as semi-bold gray text in CSS
+      scoreLabel.textContent = "Match Score"; // static label text the user sees
+
+      // Create the numeric score display e.g. "3.8 / 10"
+      var scoreValue = document.createElement("span");
+      scoreValue.className = "score-value"; // styled as bold accent-color text in CSS
+      // REASON: toFixed(1) ensures exactly 1 decimal place e.g. "3.8" not "3.800000"
+      scoreValue.textContent = project.match_score.toFixed(1) + " / 10";
+
+      // Create the outer track (gray background bar) for the visual progress bar
+      var scoreBar = document.createElement("div");
+      scoreBar.className = "score-bar"; // thin gray background track styled in CSS
+      // REASON: role="presentation" tells screen readers to ignore the bar
+      //         since the aria-label on the badge already conveys the information
+      scoreBar.setAttribute("role", "presentation");
+
+      // Create the colored fill that sits inside the bar track
+      var scoreBarFill = document.createElement("div");
+      scoreBarFill.className = "score-bar-fill"; // accent-colored fill styled in CSS
+      // REASON: match_score is 0–10, so multiplying by 10 converts it to a 0–100%
+      //         width. Example: score 3.8 → width 38%, score 10 → width 100%
+      scoreBarFill.style.width = (project.match_score * 10) + "%";
+
+      // Assemble the elements: fill goes inside bar track
+      scoreBar.appendChild(scoreBarFill);
+      // Then add label, number, and bar into the badge container
+      scoreBadge.appendChild(scoreLabel);
+      scoreBadge.appendChild(scoreValue);
+      scoreBadge.appendChild(scoreBar);
+      // REASON: Inject the badge into the card between the title and description
+      //         so the score is visible immediately without scrolling
+      card.appendChild(scoreBadge);
+    }
+    // -----------------------------------------------------------------------
+    // END of Score Badge change
+    // -----------------------------------------------------------------------
 
     var desc = document.createElement("p");
     desc.className = "project-card-desc";

@@ -167,8 +167,56 @@ def get_recommendations(skills_string, level, interest, time_availability):
     # most relevant recommendations appear first.
     scored_projects.sort(key=lambda item: item["score"], reverse=True)
 
-    # Return only the project dicts, not the score metadata
-    return [item["project"] for item in scored_projects[:MAX_RESULTS]]
+    # -----------------------------------------------------------------------
+    # CHANGE: Build a results list that includes a "match_score" out of 10
+    # REASON: The issue required showing a score/10 on each recommended project
+    #         card so users can easily understand how well a project fits them.
+    #         Previously this function just returned raw project dicts with no
+    #         score. Now we normalize the raw float score to a 0–10 scale and
+    #         attach it as a new "match_score" field on every project dict.
+    # -----------------------------------------------------------------------
+
+    results = []  # NEW: empty list to collect the top projects (with score attached)
+
+    for item in scored_projects[:MAX_RESULTS]:
+        # Pull out the project data and its raw score from the sorted list
+        project   = item["project"]   # the full project dict (title, skills, level, etc.)
+        raw_score = item["score"]     # raw float score calculated by score_single_project()
+
+        # REASON: We need to know the maximum possible score for THIS project
+        #         so we can convert the raw score into a percentage (0–10 scale).
+        #         Max score = (skills × weight) + level weight + interest weight + time weight
+        num_skills = len(project.get("skills", []))  # count how many skills the project needs
+        max_score = (
+            (num_skills * SCORING_WEIGHTS["skill"])  # best possible skill score (all skills matched)
+            + SCORING_WEIGHTS["level"]               # +2 if the user's level matches
+            + SCORING_WEIGHTS["interest"]            # +2 if the user's interest matches
+            + SCORING_WEIGHTS["time"]                # +1 if time availability matches
+        )
+
+        # REASON: Convert raw_score to a 0–10 scale so users see "8.5 / 10"
+        #         instead of a confusing internal float like "6.33".
+        #         We check max_score > 0 first to avoid dividing by zero.
+        if max_score > 0:
+            # Formula: (raw_score ÷ max_score) × 10, rounded to 1 decimal place
+            # Example: raw=6, max=8 → (6/8)×10 = 7.5
+            match_score = round((raw_score / max_score) * 10, 1)
+        else:
+            match_score = 0.0  # safety fallback (project with zero weights)
+
+        # REASON: We must NOT modify the original project dict directly because
+        #         it is stored in the shared in-memory cache (data_loader.py).
+        #         Modifying it would permanently attach the score from THIS
+        #         request onto the cached object, affecting ALL future requests.
+        #         Using dict(project) creates a fresh shallow copy that is safe to edit.
+        project_with_score = dict(project)               # create a copy, not the original
+        project_with_score["match_score"] = match_score  # add the 0–10 score to the copy
+
+        results.append(project_with_score)  # add the scored project to the final list
+
+    # REASON: Return the new list (with match_score included) instead of the
+    #         old one-liner that returned raw project dicts without any score.
+    return results
 
 
 VALID_LEVELS = ["beginner", "intermediate", "advanced"]
