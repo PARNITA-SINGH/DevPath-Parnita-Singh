@@ -3786,3 +3786,57 @@ html[data-theme="dark"] .btn-view-code-sm {
 
 /* ============================================================
    WORKING DARK MODE
+
+/* =============================================================
+   CHANGE: Score Badge Styles
+   REASON: Added to support the new "Match Score X.X / 10" badge
+           that appears on each project card in the results section.
+           These styles control how the label, number, and progress
+           bar look in both light mode and dark mode.
+   Classes used in script.js:
+     .project-match-score  — outer wrapper div
+     .score-label          — "Match Score" text on the left
+     .score-value          — "3.8 / 10" number in the middle
+     .score-bar            — gray background track for the bar
+     .score-bar-fill       — colored fill inside the track
+   ============================================================= */
+
+/* Outer wrapper: holds the label, number, and bar in one row */
+.project-match-score {
+  display: flex;       /* REASON: puts label, value, and bar side by side in a row */
+  align-items: center; /* REASON: vertically centers all three elements */
+  gap: 8px;            /* REASON: adds space between the label, number, and bar */
+  margin-bottom: 10px; /* REASON: creates breathing room below the badge before the description */
+  font-size: 0.8rem;   /* REASON: slightly smaller than body text so it doesn't overpower the title */
+}
+
+/* "Match Score" label text shown on the left of the badge */
+.score-label {
+  font-weight: 600;          /* REASON: semi-bold so it reads as a label, not body text */
+  color: var(--text-body);   /* REASON: uses the theme's body text color — works in light AND dark mode */
+  white-space: nowrap;       /* REASON: stops the label from wrapping onto a second line on small screens */
+}
+
+/* Numeric score e.g. "3.8 / 10" shown next to the label */
+.score-value {
+  font-weight: 700;       /* REASON: bold so the number stands out — it's the most important piece of info */
+  color: var(--accent);   /* REASON: uses the app's primary indigo accent color to make the score eye-catching */
+  white-space: nowrap;    /* REASON: keeps "3.8 / 10" on one line, never wraps */
+}
+
+/* Background track of the visual progress bar */
+.score-bar {
+  flex: 1;                   /* REASON: expands to fill the remaining space in the row after label and number */
+  height: 6px;               /* REASON: thin bar so it's decorative, not dominant */
+  background: var(--border); /* REASON: uses theme border color — light gray in light mode, dark in dark mode */
+  border-radius: 3px;        /* REASON: rounded ends make the bar look polished */
+  overflow: hidden;          /* REASON: clips the fill so it never spills outside the rounded track */
+}
+
+/* Colored fill inside the track — width is set dynamically by script.js */
+.score-bar-fill {
+  height: 100%;              /* REASON: fills the full height of the track */
+  background: var(--accent); /* REASON: same accent color as the score number for visual consistency */
+  border-radius: 3px;        /* REASON: rounded fill matches the rounded track edges */
+  transition: width 0.4s ease; /* REASON: animates the bar smoothly when the card appears on screen */
+}
