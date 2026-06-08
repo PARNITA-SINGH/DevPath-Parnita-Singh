@@ -480,9 +480,13 @@ updateProfileWidgets();
     if (el) el.textContent = "";
   }
 
-  function showFieldError(id, message) {
-    var el = document.getElementById(id);
-    if (el) el.textContent = message;
+  function syncSkillsHiddenInput() {
+    if (!skillsHidden){
+      skillsHidden = document.getElementById("skills");
+    }
+    // Keep the hidden <input> in sync for form serialisation
+    // The API expects a comma-separated string, so join the array that way
+    skillsHidden.value = selectedSkills.join(", ");
   }
 
   function clearAllErrors() {
