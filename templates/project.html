@@ -106,6 +106,7 @@
             {% endfor %}
             <span class="badge badge--time">{{ project.time }} effort</span>
           </div>
+          <div id="project-match-explanation-container"></div>
           <p class="detail-description">{{ project.description }}</p>
         </div>
 
@@ -394,9 +395,11 @@
   <button id="scroll-top-btn" aria-label="Back to top" title="Back to top">↑</button>
 
   <!-- Pass project metadata to the JavaScript without hardcoding -->
+  <meta id="project-metadata" data-id="{{ project.id }}" data-title="{{ project.title }}">
   <script>
-    var PROJECT_ID = {{ project.id | tojson }};
-    var PROJECT_TITLE = {{ project.title | tojson }};
+    var meta = document.getElementById('project-metadata');
+    var PROJECT_ID = parseInt(meta.getAttribute('data-id'), 10);
+    var PROJECT_TITLE = meta.getAttribute('data-title');
   </script>
   <script src="/static/script.js"></script>
 </body>

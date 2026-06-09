@@ -800,6 +800,13 @@ updateProfileWidgets();
     // END of Score Badge change
     // -----------------------------------------------------------------------
 
+    if (project.match_explanation) {
+      var explanationP = document.createElement("p");
+      explanationP.className = "project-match-explanation";
+      explanationP.innerHTML = '<svg class="explanation-icon" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg><span>' + project.match_explanation + '</span>';
+      card.appendChild(explanationP);
+    }
+
     var desc = document.createElement("p");
     desc.className = "project-card-desc";
     var descText = document.createElement("span");
@@ -851,6 +858,11 @@ updateProfileWidgets();
     link.className = "btn-details";
     link.textContent = "View Full Project";
     link.href = "/project/" + project.id;
+    link.addEventListener("click", function() {
+        if (project.match_explanation) {
+            sessionStorage.setItem("project_" + project.id + "_explanation", project.match_explanation);
+        }
+    });
     footer.appendChild(saveButton);
     footer.appendChild(link);
 
@@ -1135,6 +1147,12 @@ updateProfileWidgets();
 (function initDetailPage() {
   if (typeof PROJECT_ID === "undefined") return;
   recordProjectView();
+
+  var matchExplanationContainer = document.getElementById("project-match-explanation-container");
+  var savedExplanation = sessionStorage.getItem("project_" + PROJECT_ID + "_explanation");
+  if (matchExplanationContainer && savedExplanation) {
+      matchExplanationContainer.innerHTML = '<p class="project-match-explanation detail-explanation"><svg class="explanation-icon" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg><span>' + savedExplanation + '</span></p>';
+  }
 
   var codePanel = document.getElementById("code-panel");
   var codePanelOverlay = document.getElementById("code-panel-overlay");

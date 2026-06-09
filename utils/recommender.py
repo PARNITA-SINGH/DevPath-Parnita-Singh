@@ -119,9 +119,9 @@ def score_single_project(project, user_skills, level, interest, time_availabilit
 
     # If the project needs more time than the user has, exclude it.
     if project_time not in TIME_RANKS or user_time not in TIME_RANKS:
-        return 0
+        return 0, {}
     if TIME_RANKS.index(project_time) > TIME_RANKS.index(user_time):
-        return 0
+        return 0, {}
 
     score = 0
 
@@ -140,16 +140,31 @@ def score_single_project(project, user_skills, level, interest, time_availabilit
 
     score += matched_skills * SCORING_WEIGHTS["skill"] * coverage_ratio
 
+    level_match = False
     if project.get("level", "").lower() == level.lower():
         score += SCORING_WEIGHTS["level"]
+        level_match = True
 
+    interest_match = False
     if project.get("interest", "").lower() == interest.lower():
         score += SCORING_WEIGHTS["interest"]
+        interest_match = True
 
+    time_match = False
     if project_time == user_time:
         score += SCORING_WEIGHTS["time"]
+        time_match = True
 
-    return score
+    matched_skills_list = [skill for skill in user_skills if skill in project_skills]
+
+    match_details = {
+        "matched_skills": matched_skills_list,
+        "level": level_match,
+        "interest": interest_match,
+        "time": time_match
+    }
+
+    return score, match_details
 
 
 # ---------------------------------------------------------------------------
@@ -228,11 +243,16 @@ def get_recommendations(skills_string, level, interest, time_availability):
 
     scored = []
     for project in all_projects:
-        score = score_single_project(
+        score_result = score_single_project(
             project, user_skills, level, interest, time_availability
         )
+        if isinstance(score_result, tuple):
+            score, match_details = score_result
+        else:
+            score, match_details = score_result, {}
+            
         if score >= SCORING_WEIGHTS["skill"]:
-            scored.append({"project": project, "score": score})
+            scored.append({"project": project, "score": score, "match_details": match_details})
 
     scored.sort(key=lambda item: item["score"], reverse=True)
     top_projects = [item["project"] for item in scored[:MAX_RESULTS]]
@@ -252,6 +272,7 @@ def get_recommendations(skills_string, level, interest, time_availability):
     for item in scored[:MAX_RESULTS]:
         project   = item["project"]  # the full project dict (title, skills, level, etc.)
         raw_score = item["score"]    # raw float score from score_single_project()
+        match_details = item.get("match_details", {})
 
         # Calculate the maximum possible score for this project to normalize to 0–10
         num_skills = len(project.get("skills", []))  # how many skills this project needs
@@ -268,9 +289,56 @@ def get_recommendations(skills_string, level, interest, time_availability):
         else:
             match_score = 0.0  # safety fallback
 
+        # Construct distinct explanation
+        import random
+        
+        matched_skills_list = match_details.get("matched_skills", [])
+        skills_str = ""
+        if matched_skills_list:
+            skills_str = ", ".join(matched_skills_list[:3])
+            if len(matched_skills_list) > 3:
+                skills_str += f", and {len(matched_skills_list) - 3} more"
+        
+        # Determine components
+        has_skills = bool(skills_str)
+        has_level = bool(match_details.get("level"))
+        has_interest = bool(match_details.get("interest"))
+        
+        # Build dynamic parts
+        parts = []
+        if has_skills:
+            parts.append(f"utilizes your skills in {skills_str}")
+        if has_level:
+            parts.append("fits your current experience level")
+        if has_interest:
+            parts.append("aligns closely with your interests")
+            
+        project_title = project.get("title", "this project")
+            
+        if not parts:
+            explanation = f"We highly recommend '{project_title}' based on your overall profile."
+        else:
+            # Join the parts naturally
+            if len(parts) == 1:
+                reasons = parts[0]
+            elif len(parts) == 2:
+                reasons = f"{parts[0]} and {parts[1]}"
+            else:
+                reasons = f"{parts[0]}, {parts[1]}, and {parts[2]}"
+                
+            templates = [
+                f"'{project_title}' is a great match because it {reasons}.",
+                f"We recommend '{project_title}' as it {reasons}.",
+                f"Based on your profile, '{project_title}' stands out because it {reasons}.",
+                f"Dive into '{project_title}'! It's an excellent choice that {reasons}.",
+                f"This project, '{project_title}', is ideal for you since it {reasons}."
+            ]
+            explanation = random.choice(templates)
+
         # Use a shallow copy so we never mutate the shared in-memory cache
         project_with_score = dict(project)               # copy, not the original
         project_with_score["match_score"] = match_score  # attach the 0–10 score
+        project_with_score["match_explanation"] = explanation
 
         recommendations.append(project_with_score)
 
@@ -290,7 +358,7 @@ VALID_LEVELS            = ["beginner", "intermediate", "advanced"]
 VALID_TIME_AVAILABILITY = ["low", "medium", "high"]
 # VALID_INTERESTS: interests that exist in the project dataset (from data/projects.json)
 VALID_INTERESTS = ["web", "data", "automation", "backend", "cybersecurity",
-                   "education", "games"]  # compared lowercase against user input
+                   "education", "games", "tools", "productivity", "business logic", "mobile", "machine learning/ai", "devops"]  # compared lowercase against user input
 
 
 def validate_recommendation_inputs(skills, level, interest, time_availability):

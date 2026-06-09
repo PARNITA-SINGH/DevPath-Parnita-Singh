@@ -4064,6 +4064,30 @@ html[data-theme="dark"] .btn-view-code-sm {
   transition: width 0.4s ease; /* REASON: animates the bar smoothly when the card appears on screen */
 }
 
+/* Match Explanation */
+.project-match-explanation {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: -4px;
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.detail-explanation {
+  margin-top: 10px;
+  margin-bottom: 24px;
+  font-size: 0.95rem;
+}
+
+.explanation-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--accent);
+}
+
 /* =============================================================
    CAREER ROADMAP COMPARISON PAGE
    ============================================================= */
