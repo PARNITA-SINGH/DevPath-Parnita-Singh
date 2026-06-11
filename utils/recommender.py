@@ -23,6 +23,12 @@ SCORING_WEIGHTS = {
     "time":     1,
 }
 
+# Backwards-compatible aliases used by older tests and contributor examples.
+WEIGHT_SKILL = SCORING_WEIGHTS["skill"]
+WEIGHT_LEVEL = SCORING_WEIGHTS["level"]
+WEIGHT_INTEREST = SCORING_WEIGHTS["interest"]
+WEIGHT_TIME = SCORING_WEIGHTS["time"]
+
 # Common aliases and abbreviations for skills.
 # This improves recommendation accuracy by normalizing user input.
 SKILL_ALIASES = {
@@ -55,6 +61,22 @@ def parse_skills(skills_string):
     Example:
         "JS, HTML5, CSS3" -> ["javascript", "html", "css"]
     """
+    if not isinstance(skills_string, str):
+        return []
+
+    stripped = skills_string.strip()
+    if stripped.startswith("["):
+        try:
+            parsed = json.loads(stripped)
+            if isinstance(parsed, list):
+                return [
+                    SKILL_ALIASES.get(str(skill).strip().lower(), str(skill).strip().lower())
+                    for skill in parsed
+                    if str(skill).strip()
+                ]
+        except json.JSONDecodeError:
+            pass
+
     raw_skills = [
         s.strip().lower()
         for s in skills_string.split(",")
@@ -100,7 +122,9 @@ def score_single_project(project, user_skills, level, interest, time_availabilit
     # Count how many user skills overlap with the
     # skills required by the current project.
     matched_skills = sum(1 for skill in user_skills if skill in project_skills)
-    score += matched_skills * SCORING_WEIGHTS["skill"]
+    if project_skills and matched_skills:
+        coverage = matched_skills / len(project_skills)
+        score += matched_skills * SCORING_WEIGHTS["skill"] * coverage
 
     if project.get("level", "").lower() == level.lower():
         score += SCORING_WEIGHTS["level"]
@@ -173,17 +197,7 @@ def _get_related(recommended_ids, all_projects, cluster_data):
 
 def get_recommendations(skills_string, level, interest, time_availability):
     """
-    Return the top N recommended projects for the given user inputs,
-    along with related projects from the same cluster.
-
-    Return shape:
-        {
-            "recommendations": [ <project>, ... ],  # up to MAX_RESULTS
-            "related":         [ <project>, ... ],  # up to MAX_RELATED
-        }
-
-    The "related" list is empty when clusters.json does not exist yet.
-    Run scripts/cluster_projects.py to generate it.
+    Return the top N recommended projects for the given user inputs.
     """
     user_skills  = parse_skills(skills_string)
     all_projects = load_all_projects()
@@ -198,19 +212,27 @@ def get_recommendations(skills_string, level, interest, time_availability):
 
     scored.sort(key=lambda item: item["score"], reverse=True)
     top_projects = [item["project"] for item in scored[:MAX_RESULTS]]
-    top_ids      = [p["id"] for p in top_projects]
-
-    cluster_data = _load_clusters()
-    related = _get_related(top_ids, all_projects, cluster_data) if cluster_data else []
-
-    return {
-        "recommendations": top_projects,
-        "related":         related,
-    }
+    return top_projects
 
 
 VALID_LEVELS = ["beginner", "intermediate", "advanced"]
 VALID_TIME_AVAILABILITY = ["low", "medium", "high"]
+VALID_INTERESTS = [
+    "automation",
+    "backend",
+    "business logic",
+    "cloud computing",
+    "cybersecurity",
+    "data",
+    "devops",
+    "education",
+    "games",
+    "machine learning/ai",
+    "mobile",
+    "productivity",
+    "tools",
+    "web",
+]
 
 
 def validate_recommendation_inputs(skills, level, interest, time_availability):
