@@ -465,6 +465,11 @@ html[data-entry-anim="true"] .form-card form > .btn-submit              { animat
   color: var(--gray-600);
 }
 
+[data-theme="dark"] .badge {
+  background: rgba(148, 163, 184, 0.15);
+  color: #cbd5e1;
+}
+
 .badge--beginner {
   background: var(--green-100);
   color: var(--green-500);
@@ -483,6 +488,27 @@ html[data-entry-anim="true"] .form-card form > .btn-submit              { animat
 .badge--data {
   background: var(--purple-100);
   color: var(--purple-600);
+}
+
+/* Dark mode overrides for badges to improve contrast */
+[data-theme="dark"] .badge--beginner {
+  background: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
+}
+
+[data-theme="dark"] .badge--web {
+  background: rgba(79, 110, 247, 0.15);
+  color: #a5b4fc;
+}
+
+[data-theme="dark"] .badge--python {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fcd34d;
+}
+
+[data-theme="dark"] .badge--data {
+  background: rgba(124, 58, 237, 0.15);
+  color: #c4b5fd;
 }
 
 /* =============================================================
@@ -4500,6 +4526,11 @@ body.dark-theme .theme-toggle:hover {
   margin-bottom: 4px;
 }
 
+[data-theme="dark"] .compare-vs-badge {
+  background: rgba(79, 110, 247, 0.15);
+  color: #a5b4fc;
+}
+
 .compare-btn {
   white-space: nowrap;
   padding: 12px 24px;
@@ -4893,4 +4924,16 @@ body.dark-theme .theme-toggle:hover {
 [data-theme="dark"] .compare-skill-chip--shared {
   background: rgba(16, 185, 129, 0.15);
   color: #6ee7b7;
+}
+
+[data-theme="dark"] .compare-tag--a,
+[data-theme="dark"] .compare-skill-chip--a {
+  background: rgba(79, 110, 247, 0.15);
+  color: #a5b4fc;
+}
+
+[data-theme="dark"] .compare-tag--b,
+[data-theme="dark"] .compare-skill-chip--b {
+  background: rgba(124, 58, 237, 0.15);
+  color: #c4b5fd;
 }
