@@ -345,6 +345,254 @@ if (isIndexPage) {
 
   updateQuickPickState();
 
+  function hideSuggestions() {
+    visibleSuggestions = [];
+    activeSuggestionIndex = -1;
+    if (suggestionsDiv) {
+      suggestionsDiv.style.display = "none";
+      suggestionsDiv.classList.remove("show");
+      suggestionsDiv.innerHTML = "";
+    }
+    syncSuggestionsA11yState();
+    suggestions.style.display = "none";
+    suggestions.textContent = "";
+    skillsInput.setAttribute("aria-expanded", "false");
+  }
+
+  // ----------------------------------------------------------
+  // Form validation
+  // ----------------------------------------------------------
+
+  //puts error msg under specific field
+  function showFieldError(fieldId, message) {
+    var el = document.getElementById(fieldId);
+    if (el) el.textContent = message;
+  }
+
+  //clears error msg under specific field
+  function clearFieldError(fieldId) {
+    var el = document.getElementById(fieldId);
+    if (el) el.textContent = ""; //empty string = no error msg
+  }
+
+  function showSuggestions(items) {
+    visibleSuggestions = items;
+    activeSuggestionIndex = -1;
+    suggestions.textContent = "";
+    if (!items.length) {
+      hideSuggestions();
+      return;
+    }
+    items.forEach(function (skill, index) {
+      var item = document.createElement("div");
+      item.className = "suggestion-item";
+      
+      // Check if skill is already selected for multi-select styling
+      var isSelected = isSkillSelected(skill);
+      if (isSelected) {
+        item.classList.add("selected");
+      }
+      
+      item.textContent = skill;
+      item.setAttribute("role", "option");
+      item.setAttribute("id", "skills-suggestion-" + index);
+      item.setAttribute("aria-selected", isSelected ? "true" : "false");
+
+      // Prevent the input blur handler from closing the menu before click runs.
+      item.addEventListener("mousedown", function (evt) {
+        evt.preventDefault();
+      });
+
+      item.id = "skills-suggestion-" + index;
+      item.setAttribute("role", "option");
+      item.setAttribute("aria-selected", "false");
+      item.textContent = skill;
+      item.addEventListener("mousedown", function (event) { event.preventDefault(); });
+      item.addEventListener("mouseenter", function () {
+        activeSuggestionIndex = index;
+        renderSuggestionState();
+      });
+      item.addEventListener("click", function () {
+        selectSuggestion(skill);
+        // Keep dropdown open if clicking from dropdown (multi-select mode)
+        if (suggestionsDiv.classList.contains("show")) {
+          displaySuggestions(items);
+          skillsTextInput.focus();
+        }
+        window.addSkill(skill);
+        skillsInput.value = "";
+        hideSuggestions();
+      });
+      suggestions.appendChild(item);
+    });
+    suggestions.style.display = "block";
+    skillsInput.setAttribute("aria-expanded", "true");
+  }
+
+  // checks form fields and shows error messages if any required field is missing or invalid. 
+  // Returns true if the form is valid, false otherwise
+  function validateForm() {
+    var valid = true;
+
+    // Check both the array and the hidden input since skills can come from either source
+    if (selectedSkills.length === 0 && !skillsHidden.value.trim()) {
+      showFieldError("skills-error", "Please add at least one skill.");
+      valid = false;
+    }
+    if (!document.getElementById("level").value) {
+      showFieldError("level-error", "Please select your experience level.");
+      valid = false;
+    }
+  });
+
+  // Add/toggle skill on quick-pick chip click
+  quickPickChips.forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      var skill = chip.getAttribute("data-skill");
+      var isAlreadySelected = selectedSkills.some(function (s) {
+        return s.toLowerCase() === skill.toLowerCase();
+      });
+
+      if (isAlreadySelected) {
+        removeSkill(skill);
+      } else {
+        addSkill(skill);
+      }
+      hideSuggestions();
+      skillsTextInput.value = "";
+    });
+  });
+
+  // Multi-select dropdown toggle functionality
+  var dropdownBtn = document.getElementById("skills-dropdown-toggle");
+  if (dropdownBtn) {
+    dropdownBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var suggestionsOpen = suggestionsDiv.style.display === "block";
+      
+      if (suggestionsOpen) {
+        hideSuggestions();
+      } else {
+        // Show all available skills in dropdown
+        displaySuggestions(availableSkills);
+        suggestionsDiv.classList.add("show");
+      }
+    });
+  }
+
+  // Show suggestions on input
+  skillsTextInput.addEventListener("input", function (evt) {
+    var typedValue = evt.target.value.trim();
+    if (typedValue.length === 0) {
+      hideSuggestions();
+      return;
+    if (!document.getElementById("interest").value) {
+      showFieldError("interest-error", "Please select an area of interest.");
+      valid = false;
+    }
+    if (!document.getElementById("time").value) {
+      showFieldError("time-error", "Please select your time availability.");
+      valid = false;
+    }
+
+    return valid;
+  }
+
+
+  document.addEventListener("click", function (evt) {
+    if (skillWrap && !skillWrap.contains(evt.target)) {
+      hideSuggestions();
+    }
+  });
+
+  //add a skill to the list if it's not empty or a duplicate
+  function addSkill(rawSkill) {
+    // Clean up any extra spaces and match to canonical skill name
+    var skill = getCanonicalSkill(rawSkill);
+    // Nothing to add if string is empty after trimming
+    if (!skill) return;
+
+    // Block duplicate entries (case-insensitive)
+    if (isSkillSelected(skill)) return;
+
+    selectedSkills.push(skill);
+    renderSelectedChips();
+    syncSkillsHiddenInput();
+    updateQuickPickState();
+    // Once a skill is added, remove the "please add a skill" error if it was showing
+    clearFieldError("skills-error");
+    // Ensure the corresponding quick-pick chip is visually active immediately
+    try {
+      var quickChip = document.querySelector('.skill-chip[data-skill="' + skill + '"]');
+      if (quickChip) {
+        quickChip.classList.add('active', 'selected');
+        quickChip.setAttribute('aria-pressed', 'true');
+      }
+    } catch (e) {
+      // ignore DOM errors
+    }
+    // Keep focus in the input so user can continue typing
+    if (skillsTextInput) skillsTextInput.focus();
+  }
+
+  // remove a skill from the list and update the UI accordingly
+  function removeSkill(skill) {
+    // Rebuild the array without the skill that was just removed
+    selectedSkills = selectedSkills.filter(function (selectedSkill) {
+      return normalizeSkill(selectedSkill) !== normalizeSkill(skill);
+    });
+    renderSelectedChips();
+    syncSkillsHiddenInput();
+    updateQuickPickState();
+    // Also clear the visual active state on the quick-pick chip if present
+    try {
+      var quickChip = document.querySelector('.skill-chip[data-skill="' + skill + '"]');
+      if (quickChip) {
+        quickChip.classList.remove('active', 'selected');
+        quickChip.setAttribute('aria-pressed', 'false');
+      }
+    } catch (e) {
+      // ignore DOM errors
+    }
+  }
+
+  // recreate the selected skills chips based on the current array(selectedSkills)
+  // called every time we add or remove a skill
+  function renderSelectedChips() {
+    // Wipe out old chips first so we don't end up with duplicates in the UI
+    chipsSelectedEl.innerHTML = "";
+    selectedSkills.forEach(function (skill) {
+      // Create a new chip element for each selected skill
+      var chipEl = document.createElement("span");
+      chipEl.className = "skill-chip-selected";
+      chipEl.textContent = skill;
+
+      // Remove button for each chip (create lil "x" button)
+      var removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "skill-chip-remove";
+      removeBtn.innerHTML = "&times;"; //'x' symbol
+      removeBtn.setAttribute("aria-label", "Remove " + skill);
+      removeBtn.addEventListener("click", function (e) {
+        // Stop click from bubbling up to the chip wrap's click listener
+        e.stopPropagation();
+        removeSkill(skill);
+      });
+
+      chipEl.appendChild(removeBtn); // put x button inside the chip
+      chipsSelectedEl.appendChild(chipEl); //add chip to page
+    });
+  }
+
+  function syncSkillsHiddenInput() {
+    if (!skillsHidden) {
+      var skillsHidden = document.getElementById("skills");
+    }
+  }
+
+  updateQuickPickState();
+
 
   // ----------------------------------------------------------
   // Form validation
@@ -404,6 +652,8 @@ if (isIndexPage) {
     evt.preventDefault(); //stop the browser from reloading the page on form submit
     clearAllErrors()
     
+    clearAllErrors();
+
     if (skillsTextInput.value.trim()) {
       addSkill(skillsTextInput.value);
       skillsTextInput.value = "";
@@ -418,12 +668,57 @@ if (isIndexPage) {
     requestAnimationFrame(function () {
 
       var payload = {
+      //combine form values into an object to send to server/api
+      var payload = {
         skills: skillsHidden.value.trim() || skillsTextInput.value.trim(),
         level: document.getElementById("level").value,
         interest: document.getElementById("interest").value,
         time: document.getElementById("time").value
       };
 
+      fetch("/api/recommend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+        .then(function (res) {
+          return res.json();
+        })
+        .then(function (data) {
+          console.log("API Response:", data);
+          setLoadingState(false);
+  evt.preventDefault();
+
+  clearAllErrors();
+
+  if (skillsTextInput.value.trim()) {
+    addSkill(skillsTextInput.value);
+    skillsTextInput.value = "";
+    hideSuggestions();
+  }
+
+  if (!validateForm()) return;
+
+  setLoadingState(true);
+
+          renderResults(data.projects || [], data.message);
+        })
+        .catch(function () {
+          setLoadingState(false);
+          var generalErr = document.getElementById("form-error-general");
+          if (generalErr) {
+            generalErr.textContent = "Network error. Please try again.";
+          }
+        });
+    });
+  });
+            generalErr.textContent = "An unexpected error occurred. Please try again.";
+          }
+          console.error("API request failed:", err);
+        });
+    });
+  }); 
+      //post the data to backend api as JSON, then handle the response
       fetch("/api/recommend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -502,11 +797,56 @@ if (isIndexPage) {
     resultsSection.scrollIntoView({ behavior: "smooth" });
   }
 
-  // builds one project card as a DOM element and returns it
-  // the card has title, short description, tags and link
+  //takes the array of projects from the api and draws them on the page as cards
+  //if array is empty it shows the "no results" message instead
+  function renderResults(projects, message) {
+    console.log("Rendering results with projects:", projects);
+    console.log("Message:", message);
+    
+    resultsSection.style.display = "block";
+    resultsLoadingEl.style.display = "none";
+    // Clear out any cards from a previous search before showing new ones
+    resultsGrid.innerHTML = "";
+    recordSearch();
+
+    if (!projects || projects.length === 0) {
+      resultsGrid.style.display = "none";
+      resultsEmptyEl.style.display = "block";
+
+      // Show a friendly custom message when the user selected an interest
+      var selectedInterest = document.getElementById("interest")?.value;
+      if (selectedInterest) {
+        emptyMessageEl.textContent = "No projects are currently available for this interest. Please check back later or try a different area.";
+      } else if (message) {
+        emptyMessageEl.textContent = message;
+      } else {
+        emptyMessageEl.textContent = "Try adjusting your skills or choosing a different interest area.";
+      }
+
+  // Clear out previous results before rendering new ones
+  resultsGrid.innerHTML = "";
+
+  // If no projects are returned, show the empty state message
+  if (!projects || projects.length === 0) {
+    resultsGrid.style.display = "none";
+    resultsEmptyEl.style.display = "block";
+
+    projects.forEach(function (project) {
+      resultsGrid.appendChild(buildProjectCard(project));
+    });
+
+    recordSearch();
+    resultsSection.scrollIntoView({ behavior: "smooth" });
+    return;
+  }
+
   function buildProjectCard(project) {
     var card = document.createElement("div");
     card.className = "project-card";
+
+    // Console logging for debugging
+    console.log("Building card for project:", project);
+    console.log("Project ID:", project.id);
 
     // Title
     var title = document.createElement("h3");
@@ -543,7 +883,11 @@ if (isIndexPage) {
     link.className = "btn-details";
     link.textContent = "View Full Project";
     link.href = "/project/" + project.id; //each project has a unique id
+    
+    console.log("Created link with href:", link.href);
 
+    link.href = "/project/" + project.id;
+    footer.appendChild(saveButton);
     footer.appendChild(link);
 
     // Assemble the card in order
