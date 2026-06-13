@@ -880,9 +880,11 @@ function recordSearch() {
     return text.length > maxLength ? text.slice(0, maxLength) + "..." : text;
   }
 
-    recordSearch();
-    resultsSection.scrollIntoView({ behavior: "smooth" });
-
+  function createTag(text, type) {
+    var span = document.createElement("span");
+    span.className = "project-tag project-tag--" + normalize(type).replace(/[^a-z0-9_-]/g, "-");
+    span.textContent = text;
+    return span;
   }
 
   function buildProjectCard(project) {
@@ -943,30 +945,6 @@ function recordSearch() {
     card.appendChild(footer);
     return card;
   }
-
-  renderSavedProjects();
-
-  function renderResults(projects, message) {
-    resultsSection.style.display = "block";
-    resultsLoadingEl.style.display = "none";
-    // Always wipe the grid and hide both states before deciding what to show
-    resultsGrid.innerHTML = "";
-    resultsGrid.style.display = "none";
-    resultsEmptyEl.style.display = "none";
-    if (emptyMessageEl) { emptyMessageEl.textContent = ""; }
-    if (!projects || projects.length === 0) {
-      resultsEmptyEl.style.display = "block";
-      if (emptyMessageEl) {
-        emptyMessageEl.textContent = message || "Try adjusting your skills or choosing a different interest area.";
-      }
-      resultsSection.scrollIntoView({ behavior: "smooth" });
-      return;
-    }
-    resultsGrid.style.display = "grid";
-    projects.forEach(function (project) { resultsGrid.appendChild(buildProjectCard(project)); });
-    resultsSection.scrollIntoView({ behavior: "smooth" });
-  }
-
 
   function runProjectSearch(query) {
     if (!query) return;
