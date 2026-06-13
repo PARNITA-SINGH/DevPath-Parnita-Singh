@@ -3,6 +3,12 @@
 (function () {
   var html = document.documentElement;
 
+  var POINTS_PER_SEARCH = 5;
+  var POINTS_PER_VIEW = 10;
+  var POINTS_PER_CODE_OPEN = 15;
+  var POINTS_PER_COMPLETION = 30;
+  var PROGRESS_MAX_POINTS = 450;
+
   function applyTheme(theme) {
     var isDark = theme === "dark";
     html.setAttribute("data-theme", theme);
@@ -107,8 +113,8 @@ function saveProgressState() {
 }
 
 function computeProgressPoints() {
-  progress.points = progress.searches * 5 + progress.projectViews * 10 +
-    progress.codeOpens * 15 + progress.completions * 30;
+  progress.points = progress.searches * POINTS_PER_SEARCH + progress.projectViews * POINTS_PER_VIEW +
+    progress.codeOpens * POINTS_PER_CODE_OPEN + progress.completions * POINTS_PER_COMPLETION;
 }
 
 function showAchievementToast(title, detail) {
@@ -178,7 +184,7 @@ function updateProfileWidgets() {
       "<li><strong>Projects Completed</strong><span>" + progress.completions + "</span></li>";
   }
   if (meterFill) {
-    var percentage = Math.min(100, Math.round((progress.points / 250) * 100));
+    var percentage = Math.min(100, Math.round((progress.points / PROGRESS_MAX_POINTS) * 100));
     meterFill.style.width = percentage + "%";
     meterFill.setAttribute("aria-valuenow", String(percentage));
     meterFill.textContent = percentage + "%";
@@ -299,6 +305,7 @@ updateProfileWidgets();
     : quickPickChips.map(function (chip) { return chip.getAttribute("data-skill"); });
   var activeSuggestionIndex = -1;
   var visibleSuggestions = [];
+  var SAVED_PROJECTS_KEY = "devpathSavedProjects";
 
   function normalize(value) {
     return String(value || "").trim().toLowerCase();
@@ -507,7 +514,7 @@ updateProfileWidgets();
     if (shareWrap) shareWrap.style.display = hasResults ? "flex" : "none";
 
     if (!hasResults) {
-      if (message && emptyMessageEl) emptyMessageEl.textContent = message;
+      if (emptyMessageEl) { if (message) emptyMessageEl.textContent = message; }
       resultsSection.scrollIntoView({ behavior: "smooth" });
       return;
     }

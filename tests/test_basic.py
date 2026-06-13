@@ -29,9 +29,7 @@ from utils.recommender import (
     validate_recommendation_inputs,
     parse_skills,
     score_single_project,
-    WEIGHT_LEVEL,
-    WEIGHT_INTEREST,
-    WEIGHT_TIME,
+    SCORING_WEIGHTS,
 )
 from app import app, internal_server_error
 
@@ -293,7 +291,7 @@ def test_score_no_project_skills_does_not_crash():
     project = {"skills": [], "level": "Beginner", "interest": "Data", "time": "Low"}
     score = score_single_project(project, ["python"], "Beginner", "Data", "Low")
     # Skill score is 0, but other criteria still score
-    assert score == pytest.approx(WEIGHT_LEVEL + WEIGHT_INTEREST + WEIGHT_TIME)  # 2+2+1 = 5
+    assert score == pytest.approx(SCORING_WEIGHTS["level"] + SCORING_WEIGHTS["interest"] + SCORING_WEIGHTS["time"])  # 2+2+1 = 5
 
 
 def test_score_three_skills_partial_coverage():
@@ -552,7 +550,7 @@ def test_project_detail_not_found():
 
 def test_internal_server_error_page():
     """The 500 handler should render the friendly internal error template."""
-    with app.app_context():
+    with app.test_request_context("/"):
         rendered_page, status_code = internal_server_error(Exception("Test error"))
 
     assert status_code == 500
