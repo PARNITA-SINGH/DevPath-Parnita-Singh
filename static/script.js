@@ -574,7 +574,7 @@ updateProfileWidgets();
 
 
   // ----------------------------------------------------------
-  // Share My Result — build URL and copy to clipboard
+  // Share My Result ΓÇö build URL and copy to clipboard
   // ----------------------------------------------------------
 
   var MAX_SHARE_SKILLS = 10;
@@ -1128,4 +1128,99 @@ updateProfileWidgets();
     window.scrollTo({ top: atBottom ? 0 : document.body.scrollHeight, behavior: "smooth" });
   });
   update();
+})();
+  // ---- GitHub Skills Integration ----
+  var openModalBtn = document.getElementById('btn-show-github'); // The trigger in your main form
+  var closeModalBtn = document.getElementById('btn-close-github'); // The close button inside the modal
+  var modal = document.getElementById('github-modal-overlay');
+  var githubInput = document.getElementById('github-username');
+  var fetchBtn = document.getElementById('btn-fetch-github');
+  var errorMsg = document.getElementById('github-modal-error');
+
+if (
+    openModalBtn &&
+    closeModalBtn &&
+    modal &&
+    githubInput &&
+    fetchBtn &&
+    errorMsg
+) {
+// 1. Open Github Input Modal
+  openModalBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      modal.classList.add('active');
+      githubInput.focus();
+  });
+
+  // 2. Close Github Input Modal
+  const closeGithubModal = () => {
+      modal.classList.remove('active');
+      githubInput.value = '';
+      errorMsg.textContent = '';
+  };
+
+  closeModalBtn.addEventListener('click', closeGithubModal);
+
+  // Close on clicking outside the card
+  modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeGithubModal();
+  });
+
+  // 3. Fetch Skills Logic
+  fetchBtn.addEventListener('click', async () => {
+      const username = githubInput.value.trim();
+      if (!username) return;
+
+      fetchBtn.disabled = true;
+      fetchBtn.textContent = 'Syncing...';
+
+      try {
+          const response = await fetch('https://api.github.com/users/' + username + '/repos');
+          if (!response.ok) throw new Error();
+          
+          const repos = await response.json();
+          const langs = [...new Set(repos.map(r => r.language).filter(Boolean))];
+
+          if (langs.length > 0) {
+              langs.forEach(lang => {
+                  if (typeof addSkill === 'function') addSkill(lang);
+              });
+              closeGithubModal();
+          } else {
+              errorMsg.textContent = "No public languages found.";
+          }
+      } catch (err) {
+          errorMsg.textContent = err.message ?? "Failed to fetch skills";
+      } finally {
+          fetchBtn.disabled = false;
+          fetchBtn.textContent = 'Fetch Skills';
+      }
+  });
+}
+
+(function initScrollSpy() {
+  var sections = document.querySelectorAll("section[id], header[id]");
+  var navLinks = document.querySelectorAll(".nav-link, .nav-mobile-link");
+
+  if (sections.length === 0 || navLinks.length === 0) return;
+
+  var observerOptions = {
+    root: null,
+    rootMargin: "0px 0px -50% 0px",
+    threshold: 0
+  };
+
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        navLinks.forEach(function(link) {
+          link.classList.toggle('active', link.getAttribute('href') === '#' + entry.target.id);
+        });
+      }
+    });
+  }, observerOptions);
+
+  sections.forEach(function (sec) {
+    observer.observe(sec);
+  });
 })();
