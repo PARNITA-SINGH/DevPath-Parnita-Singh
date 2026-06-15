@@ -109,7 +109,7 @@ def test_404_does_not_expose_stack_trace():
 
 def test_500_html_renders():
     """The 500 handler must render the friendly template and return 500."""
-    with app.app_context():
+    with app.test_request_context("/"):
         from errors.handlers import internal_server_error
         rendered, status = internal_server_error(Exception("test"))
     assert status == 500
@@ -119,7 +119,7 @@ def test_500_html_renders():
 
 def test_500_does_not_expose_exception_message():
     """The 500 HTML response must not contain the raw exception message."""
-    with app.app_context():
+    with app.test_request_context("/"):
         from errors.handlers import internal_server_error
         rendered, _ = internal_server_error(Exception("super secret db password"))
     assert "super secret db password" not in rendered
@@ -223,7 +223,7 @@ def test_security_headers_on_404():
 
 
 def test_security_headers_on_500():
-    with app.app_context():
+    with app.test_request_context("/"):
         from errors.handlers import internal_server_error as h
         _, status = h(Exception("hdr test"))
     # Headers are added by after_request; verify the handler itself returns 500
@@ -242,6 +242,7 @@ def test_unhandled_exception_returns_500():
     with app.test_request_context():
         pass  # ensure app context works
 
+    app._got_first_request = False
     @app.route("/test-unhandled-exception-xyz")
     def _broken_route():
         raise RuntimeError("deliberate crash for testing")
@@ -251,10 +252,6 @@ def test_unhandled_exception_returns_500():
     assert response.status_code == 500
 
     # Clean up the temporary route
-    app.url_map._rules = [
-        r for r in app.url_map._rules
-        if r.rule != "/test-unhandled-exception-xyz"
-    ]
     app.view_functions.pop("_broken_route", None)
 
 import pytest
@@ -262,6 +259,7 @@ import pytest
 @pytest.mark.skip(reason="Flask 3.x route registration restriction")
 def test_unhandled_exception_does_not_leak_message():
     """The 500 response from an unhandled exception must not expose the error message."""
+    app._got_first_request = False
     @app.route("/test-leak-check-xyz")
     def _leaky_route():
         raise ValueError("do not expose this secret value")
@@ -270,8 +268,4 @@ def test_unhandled_exception_does_not_leak_message():
     response = client.get("/test-leak-check-xyz")
     assert b"do not expose this secret value" not in response.data
 
-    app.url_map._rules = [
-        r for r in app.url_map._rules
-        if r.rule != "/test-leak-check-xyz"
-    ]
     app.view_functions.pop("_leaky_route", None)
