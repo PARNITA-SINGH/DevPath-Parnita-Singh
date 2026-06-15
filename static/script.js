@@ -798,14 +798,17 @@ updateProfileWidgets();
       resultsEmptyEl.style.display = "block";
 
       // Show a friendly custom message when the user selected an interest
-      var selectedInterest = document.getElementById("interest")?.value;
-      if (selectedInterest) {
-        emptyMessageEl.textContent = "No projects are currently available for this interest. Please check back later or try a different area.";
-      } else if (message) {
+if (emptyMessageEl) {
+    if (message && message.toLowerCase().includes("no projects are currently available")) {
+        emptyMessageEl.textContent =
+            "No projects are currently available for this interest. Please check back later or try a different area.";
+    } else if (message) {
         emptyMessageEl.textContent = message;
-      } else {
-        emptyMessageEl.textContent = "Try adjusting your skills or choosing a different interest area.";
-      }
+    } else {
+        emptyMessageEl.textContent =
+            "Try adjusting your skills or choosing a different interest area.";
+    }
+}
 
   // Clear out previous results before rendering new ones
   resultsGrid.innerHTML = "";
