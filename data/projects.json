@@ -6,6 +6,7 @@
     "level": "Beginner",
     "interest": "Data",
     "time": "Low",
+    "estimated_hours": 6,
     "description": "A command-line tool that helps users track daily expenses, categorize spending, and generate simple summary reports. Great for learning file handling, loops, and basic data processing.",
     "features": [
       "Add and delete expense entries",
@@ -37,6 +38,7 @@
     "level": "Beginner",
     "interest": "Web",
     "time": "Low",
+    "estimated_hours": 4,
     "description": "A simple web page that fetches weather data from a free API and displays current conditions for any city. Teaches API calls, DOM manipulation, and basic UI design.",
     "features": [
       "Search weather by city name",
@@ -68,6 +70,7 @@
     "level": "Beginner",
     "interest": "Education",
     "time": "Medium",
+    "estimated_hours": 12,
     "description": "A Python application to store student names and their grades, compute averages, and display a class report. Ideal for practicing data structures, functions, and file persistence.",
     "features": [
       "Add students and assign grades per subject",
@@ -99,6 +102,7 @@
     "level": "Intermediate",
     "interest": "Web",
     "time": "Medium",
+    "estimated_hours": 15,
     "description": "A RESTful API built with Flask that allows clients to create, read, update, and delete tasks. Perfect for learning API design, HTTP methods, and JSON responses.",
     "features": [
       "CRUD endpoints for tasks",
@@ -131,6 +135,7 @@
     "level": "Beginner",
     "interest": "Web",
     "time": "Low",
+    "estimated_hours": 5,
     "description": "A personal portfolio site with sections for bio, projects, and contact. A great first project that teaches HTML layout, CSS styling, and a bit of JavaScript for interactivity.",
     "features": [
       "Hero section with name and tagline",
@@ -163,6 +168,7 @@
     "level": "Intermediate",
     "interest": "Web",
     "time": "High",
+    "estimated_hours": 25,
     "description": "A full-stack web app that takes long URLs and generates short codes. Users can paste a link and get a shorter one back. Teaches Flask routing, random code generation, and front-end form handling.",
     "features": [
       "Shorten any valid URL",
@@ -374,55 +380,49 @@
     ],
     "starter_code": "starter_code/api_data_pipeline.py"
   },
- {
-  "id": 11,
-  "title": "AI Resume Analyzer",
-  "skills": [
-    "Python",
-    "Flask",
-    "HTML",
-    "CSS",
-    "JavaScript"
-  ],
-  "level": "Intermediate",
-  "interest": "Data",
-  "time": "High",
-  "description": "A Flask web app that compares a resume against a job description using TF-IDF similarity and keyword extraction. Users upload a PDF or paste text, and the app returns a match score, a list of missing keywords, and actionable feedback — with no external AI API required.",
-  "features": [
-    "Upload a resume as PDF or paste plain text",
-    "Paste any job description for comparison",
-    "TF-IDF cosine similarity match score (0–100%)",
-    "Missing skills and keyword gap analysis",
-    "Actionable written feedback based on score",
-    "Single-page interface with interactive feedback display"
-  ],
-  "tech_stack": [
-    "Python",
-    "Flask",
-    "PyPDF2",
-    "scikit-learn",
-    "HTML",
-    "CSS",
-    "JavaScript"
-  ],
-  "roadmap": [
-    "Step 1: Run the server and verify the upload form renders",
-    "Step 2: Complete extract_text_from_pdf() using PyPDF2",
-    "Step 3: Complete clean_text() to normalise punctuation and whitespace",
-    "Step 4: Complete extract_keywords() to remove stopwords and count frequency",
-    "Step 5: Complete calculate_similarity() with TF-IDF and cosine distance",
-    "Step 6: Complete find_missing_skills() by comparing two keyword sets",
-    "Step 7: Complete generate_feedback() to produce written suggestions",
-    "Step 8: Wire everything together inside the /analyze Flask route",
-    "Step 9: Test with a real resume PDF and a real job posting"
-  ],
-  "resources": [
-    "PyPDF2 documentation: https://pypdf2.readthedocs.io/",
-    "scikit-learn TF-IDF guide: https://scikit-learn.org/stable/modules/feature_extraction.html#tfidf-term-weighting",
-    "Cosine similarity explained: https://www.machinelearningplus.com/nlp/cosine-similarity",
-    "Flask quickstart: https://flask.palletsprojects.com/quickstart"
-  ],
-  "starter_code": "starter_code/ai_resume_analyzer.py"
+  {
+    "id": 11,
+    "title": "AI Resume Analyzer",
+    "skills": ["Python", "Flask", "HTML", "CSS", "JavaScript"],
+    "level": "Intermediate",
+    "interest": "Data",
+    "time": "High",
+    "description": "A Flask web app that compares a resume against a job description using TF-IDF similarity and keyword extraction. Users upload a PDF or paste text, and the app returns a match score, a list of missing keywords, and actionable feedback — with no external AI API required.",
+    "features": [
+      "Upload a resume as PDF or paste plain text",
+      "Paste any job description for comparison",
+      "TF-IDF cosine similarity match score (0–100%)",
+      "Missing skills and keyword gap analysis",
+      "Actionable written feedback based on score",
+      "Single-page interface with interactive feedback display"
+    ],
+    "tech_stack": [
+      "Python",
+      "Flask",
+      "PyPDF2",
+      "scikit-learn",
+      "HTML",
+      "CSS",
+      "JavaScript"
+    ],
+    "roadmap": [
+      "Step 1: Run the server and verify the upload form renders",
+      "Step 2: Complete extract_text_from_pdf() using PyPDF2",
+      "Step 3: Complete clean_text() to normalise punctuation and whitespace",
+      "Step 4: Complete extract_keywords() to remove stopwords and count frequency",
+      "Step 5: Complete calculate_similarity() with TF-IDF and cosine distance",
+      "Step 6: Complete find_missing_skills() by comparing two keyword sets",
+      "Step 7: Complete generate_feedback() to produce written suggestions",
+      "Step 8: Wire everything together inside the /analyze Flask route",
+      "Step 9: Test with a real resume PDF and a real job posting"
+    ],
+    "resources": [
+      "PyPDF2 documentation: https://pypdf2.readthedocs.io/",
+      "scikit-learn TF-IDF guide: https://scikit-learn.org/stable/modules/feature_extraction.html#tfidf-term-weighting",
+      "Cosine similarity explained: https://www.machinelearningplus.com/nlp/cosine-similarity",
+      "Flask quickstart: https://flask.palletsprojects.com/quickstart"
+    ],
+    "starter_code": "starter_code/ai_resume_analyzer.py"
   },
   {
     "id": 12,
@@ -550,7 +550,7 @@
       "Cosine Similarity: https://naomy-gomes.medium.com/the-cosine-similarity-and-its-use-in-recommendation-systems-cb2ebd811ce1"
     ],
     "starter_code": "starter_code/movie_recommender.py"
-  }, 
+  },
   {
     "id": 16,
     "title": "Sentiment Analysis Web App",
@@ -583,8 +583,7 @@
       "Tokenization: https://www.geeksforgeeks.org/nlp/nlp-how-tokenizing-text-sentence-words-works/"
     ],
     "starter_code": "starter_code/sentiment_app.py"
-  }
-  ,
+  },
   {
     "id": 17,
     "title": "Sunrise Grand Hotel Management System",
@@ -693,7 +692,12 @@
       "Group files by hash and print duplicate sets",
       "Accept target directory as a CLI argument"
     ],
-    "tech_stack": ["Rust", "std::fs", "std::collections::HashMap", "sha2 crate"],
+    "tech_stack": [
+      "Rust",
+      "std::fs",
+      "std::collections::HashMap",
+      "sha2 crate"
+    ],
     "roadmap": [
       "Step 1: Create a new project with cargo new and add sha2 to Cargo.toml",
       "Step 2: Accept a directory path from std::env::args",
@@ -786,7 +790,13 @@
       "Show a loading indicator while fetching",
       "Display an error message if the city is not found"
     ],
-    "tech_stack": ["Kotlin", "Retrofit", "Kotlin Coroutines", "OpenWeatherMap API", "Gson"],
+    "tech_stack": [
+      "Kotlin",
+      "Retrofit",
+      "Kotlin Coroutines",
+      "OpenWeatherMap API",
+      "Gson"
+    ],
     "roadmap": [
       "Step 1: Create an Android project and add Retrofit and Gson dependencies",
       "Step 2: Sign up for a free OpenWeatherMap API key",
@@ -977,7 +987,13 @@
       "Log each completed task to the console",
       "Display the pending queue at any time"
     ],
-    "tech_stack": ["C++", "std::priority_queue", "struct", "iostream", "vector"],
+    "tech_stack": [
+      "C++",
+      "std::priority_queue",
+      "struct",
+      "iostream",
+      "vector"
+    ],
     "roadmap": [
       "Step 1: Define a Task struct with name and priority fields",
       "Step 2: Write a custom comparator struct for the priority queue",
@@ -995,5 +1011,3 @@
     "starter_code": null
   }
 ]
-
-

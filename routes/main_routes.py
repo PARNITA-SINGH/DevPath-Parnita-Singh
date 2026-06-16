@@ -411,3 +411,75 @@ def update_path(path_id):
         return jsonify({"error": "Forbidden: invalid token for this path."}), 403
 
     return jsonify({"path_id": path_id, "message": "Learning path updated."}), 200
+
+
+@main.route("/api/learning-path/<path_id>/analytics", methods=["GET"])
+def get_path_analytics(path_id):
+    """
+    Calculate time analytics for a learning path.
+    Compares actual time logged against project estimates to compute velocity.
+    """
+    token = _extract_token(request)
+    if not token:
+        return jsonify({"error": f"'{_TOKEN_HEADER}' header is required."}), 400
+
+    try:
+        path_data = get_learning_path(path_id, token)
+    except (PathNotFoundError, AuthorizationError, ValueError) as e:
+        # Reuse existing error handling logic
+        status = 404 if isinstance(e, PathNotFoundError) else 403
+        return jsonify({"error": str(e)}), status
+
+    # Expecting path_data to contain a 'progress' map: { project_id: { actual_hours: N, completed: bool } }
+    progress = path_data.get("progress", {})
+    
+    total_estimated = 0
+    total_actual = 0
+    completed_estimated = 0
+    completed_actual = 0
+    
+    # Calculate totals
+    for p_id_str, user_data in progress.items():
+        project = find_project_by_id(int(p_id_str))
+        if not project:
+            continue
+            
+        est = project.get("estimated_hours", 0)
+        act = user_data.get("actual_hours", 0)
+        
+        total_estimated += est
+        total_actual += act
+        
+        if user_data.get("completed"):
+            completed_estimated += est
+            completed_actual += act
+
+    # Learning Velocity: ratio of (Actual Time Taken) / (Original Estimate)
+    # > 1.0 means user is slower than estimate, < 1.0 means user is faster
+    velocity = round(completed_actual / completed_estimated, 2) if completed_estimated > 0 else 1.0
+    
+    # Prediction logic
+    remaining_estimated = total_estimated - completed_estimated
+    predicted_remaining_hours = round(remaining_estimated * velocity, 1)
+    
+    # Recommendations based on velocity
+    recommendation = "You're on track with the estimates!"
+    if velocity > 1.2:
+        recommendation = "You're spending more time than estimated. Consider breaking tasks into smaller chunks."
+    elif velocity < 0.8:
+        recommendation = "You're moving fast! You might want to try an 'Advanced' level project next."
+
+    return jsonify({
+        "path_id": path_id,
+        "analytics": {
+            "time_spent_hours": total_actual,
+            "total_path_estimate": total_estimated,
+            "learning_velocity": velocity,
+            "completion_percentage": round((completed_estimated / total_estimated * 100), 1) if total_estimated > 0 else 0,
+            "predictions": {
+                "estimated_hours_remaining": remaining_estimated,
+                "predicted_hours_remaining": predicted_remaining_hours,
+                "recommendation": recommendation
+            }
+        }
+    }), 200
