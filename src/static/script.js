@@ -1,3 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description"
+    content="DevPath recommends real coding projects based on your skills, level, and interests — with full roadmaps and starter code." />
+  <title>DevPath — Find Projects Based On Your Skills</title>
+  
+  <!-- Open Graph meta tags for social media sharing -->
+  <meta property="og:title" content="DevPath — Find Projects Based On Your Skills" />
+  <meta property="og:description" content="{{ config.SITE_DESCRIPTION }}" />
+  <meta property="og:image" content="{{ config.get_og_image_url() }}" />
+  <meta property="og:url" content="{{ config.get_base_url() }}/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="{{ config.SITE_NAME }}" />
+  
+  <!-- Twitter Card meta tags -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="DevPath — Find Projects Based On Your Skills" />
+  <meta name="twitter:description" content="{{ config.SITE_DESCRIPTION }}" />
+  <meta name="twitter:image" content="{{ config.get_og_image_url() }}" />
+  
+  <script>
+    document.documentElement.setAttribute("data-entry-anim", "true");
+  </script>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+  {% include 'partials/theme_head.html' %}
+  <link rel="stylesheet" href="/static/style.css" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet" />
+  
+  <style>
+    /* ============================================
+       REDESIGNED PROFILE SECTION STYLES
+       Only these styles are new - rest remain original
+       ============================================ */
+    
+    /* Stats Dashboard Grid */
+    .stats-dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-dashboard-card {
+      background: var(--card-bg, #ffffff);
+      border-radius: 1.25rem;
+      padding: 1.25rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      border: 1px solid var(--border, #e5e7eb);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .stat-dashboard-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px -12px rgba(0,0,0,0.15);
+    }
+
+    .stat-dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .stat-dashboard-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted, #6b7280);
+    }
+
+    .stat-dashboard-value {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 0.75rem;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .stat-dashboard-progress {
+      margin: 0.75rem 0;
+    }
+
+    .progress-meter {
+      background: var(--gray-200, #e5e7eb);
+      border-radius: 100px;
+      height: 8px;
+      overflow: hidden;
+// script.js — DevPath client-side logic
+//
+// Responsibilities:
+//   - Mobile navigation toggle
+//   - Skill chip manager (add/remove skills)
+//   - Form validation with per-field error messages
+//   - Recommendation API call and loading states
+//   - Result card rendering
+//   - Code viewer panel (detail page)
 // DevPath client-side behavior.
 
 // ============================================================
@@ -174,6 +279,21 @@ var errorMsg = document.getElementById('github-modal-error');
   var menu = document.getElementById("nav-mobile-menu");
   if (!toggle || !menu) return;
 
+  toggle.addEventListener("click", function () {
+    var isOpen = menu.classList.toggle("open");
+    toggle.classList.toggle("open", isOpen);
+    toggle.setAttribute("aria-expanded", isOpen);
+  });
+
+  document.querySelectorAll(".nav-mobile-link").forEach(function (link) {
+    link.addEventListener("click", function () {
+      menu.classList.remove("open");
+      toggle.classList.remove("open");
+      toggle.setAttribute("aria-expanded", "false");
+    });
+  });
+})();
+
   function setOpen(isOpen) {
     menu.classList.toggle("open", isOpen);
     toggle.classList.toggle("open", isOpen);
@@ -193,7 +313,7 @@ var errorMsg = document.getElementById('github-modal-error');
   window.addEventListener("resize", function () {
     if (window.innerWidth >= 640) setOpen(false);
   });
-})();
+
 
 var STORAGE_KEY = "devpathUserProgress";
 var progress = {
@@ -460,6 +580,98 @@ updateProfileWidgets();
     });
   }
 
+  // Add skill on Enter key in the text input
+  // we intercept Enter here so it doesn't accidentally submit the whole form
+  skillsTextInput.addEventListener("keydown", function (evt) {
+    if (evt.key === "ArrowDown" || evt.key === "ArrowUp") {
+      if (visibleSuggestions.length === 0) displaySuggestions(getFilteredSkills(skillsTextInput.value));
+      if (visibleSuggestions.length === 0) return;
+      evt.preventDefault();
+      if (evt.key === "ArrowDown") {
+        activeSuggestionIndex = (activeSuggestionIndex + 1) % visibleSuggestions.length;
+      } else {
+        activeSuggestionIndex = activeSuggestionIndex <= 0 ? visibleSuggestions.length - 1 : activeSuggestionIndex - 1;
+      }
+      renderActiveSuggestion();
+      return;
+    }
+    if (evt.key === "Escape") { hideSuggestions(); return; }
+    if (evt.key === "Enter") {
+      evt.preventDefault();
+      if (activeSuggestionIndex >= 0 && visibleSuggestions[activeSuggestionIndex]) {
+        selectSuggestion(visibleSuggestions[activeSuggestionIndex]);
+        return;
+      }
+      if (skillsTextInput.value.trim()) { addSkill(skillsTextInput.value); skillsTextInput.value = ""; }
+      hideSuggestions();
+    }
+  });
+
+    .progress-meter-fill {
+      background: linear-gradient(90deg, #6366f1, #8b5cf6);
+      height: 100%;
+      border-radius: 100px;
+      display: block;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .stat-dashboard-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.7rem;
+      color: var(--text-muted, #6b7280);
+      margin-top: 0.75rem;
+    }
+
+    .reset-btn-mini {
+      background: none;
+      border: none;
+      color: var(--text-muted, #6b7280);
+      font-size: 0.7rem;
+      cursor: pointer;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.5rem;
+      transition: all 0.2s;
+    }
+
+    .reset-btn-mini:hover {
+      background: var(--gray-100, #f3f4f6);
+      color: #ef4444;
+    }
+
+    /* Badges Grid Mini */
+    .badges-grid-mini {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin: 0.75rem 0;
+      min-height: 60px;
+    }
+
+    .badge-mini {
+      background: var(--gray-100, #f3f4f6);
+      padding: 0.4rem 0.75rem;
+      border-radius: 2rem;
+      font-size: 0.7rem;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .badge-mini.earned {
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      color: white;
+  // Add/toggle skill on quick-pick chip click
+  quickPickChips.forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      var skill = chip.getAttribute("data-skill");
+      if (!skill) return;
+      if (isSkillSelected(skill)) { removeSkill(skill); } else { addSkill(skill); }
+      skillsTextInput.value = "";
+      hideSuggestions();
   function renderSelectedChips() {
     selectedChips.textContent = "";
     selectedSkills.forEach(function (skill) {
@@ -568,6 +780,255 @@ updateProfileWidgets();
     skillsInput.setAttribute("aria-expanded", "true");
   }
 
+  // checks form fields and shows error messages if any required field is missing or invalid. 
+  // Returns true if the form is valid, false otherwise
+  function validateForm() {
+    var valid = true;
+
+    // Check both the array and the hidden input since skills can come from either source
+    if (selectedSkills.length === 0 && !skillsHidden.value.trim()) {
+      showFieldError("skills-error", "Please add at least one skill.");
+      valid = false;
+    }
+
+    /* Activity Stats */
+    .activity-stats-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      margin-top: 0.5rem;
+    }
+
+    .activity-stat-item {
+      text-align: center;
+      padding: 0.75rem;
+      background: var(--gray-50, #f9fafb);
+      border-radius: 1rem;
+  });
+
+  // Add/toggle skill on quick-pick chip click
+  quickPickChips.forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      var skill = chip.getAttribute("data-skill");
+      var isAlreadySelected = selectedSkills.some(function (s) {
+        return s.toLowerCase() === skill.toLowerCase();
+      });
+
+      if (isAlreadySelected) {
+        removeSkill(skill);
+      } else {
+        addSkill(skill);
+      }
+      hideSuggestions();
+      skillsTextInput.value = "";
+    });
+  });
+
+  // Multi-select dropdown toggle functionality
+  var dropdownBtn = document.getElementById("skills-dropdown-toggle");
+  if (dropdownBtn) {
+    dropdownBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var suggestionsOpen = suggestionsDiv.style.display === "block";
+      
+      if (suggestionsOpen) {
+        hideSuggestions();
+      } else {
+        // Show all available skills in dropdown
+        displaySuggestions(availableSkills);
+        suggestionsDiv.classList.add("show");
+      }
+    });
+  }
+
+  // Show suggestions on input
+  skillsTextInput.addEventListener("input", function (evt) {
+    var typedValue = evt.target.value.trim();
+    if (typedValue.length === 0) {
+      hideSuggestions();
+      return;
+    if (!document.getElementById("interest").value) {
+      showFieldError("interest-error", "Please select an area of interest.");
+      valid = false;
+    }
+
+    .activity-stat-value {
+      display: block;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #6366f1;
+    }
+
+    return valid;
+  }
+
+    .activity-stat-label {
+      font-size: 0.7rem;
+      color: var(--text-muted, #6b7280);
+    }
+
+    /* Bottom Grid */
+    .profile-bottom-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 1.5rem;
+    }
+
+    .completed-card,
+    .leaderboard-achievement-card {
+      background: var(--card-bg, #ffffff);
+      border-radius: 1.25rem;
+      padding: 1.25rem;
+      border: 1px solid var(--border, #e5e7eb);
+    }
+
+    .completed-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border, #e5e7eb);
+    }
+
+    .completed-header h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .empty-completed {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted, #6b7280);
+    }
+
+    .empty-completed svg {
+      margin-bottom: 0.75rem;
+      opacity: 0.5;
+    }
+
+    .empty-completed p {
+      margin: 0;
+      font-weight: 500;
+  document.addEventListener("click", function (evt) {
+    if (skillWrap && !skillWrap.contains(evt.target)) {
+      hideSuggestions();
+    }
+  });
+
+  //add a skill to the list if it's not empty or a duplicate
+  function addSkill(rawSkill) {
+    // Clean up any extra spaces and match to canonical skill name
+    var skill = getCanonicalSkill(rawSkill);
+    // Nothing to add if string is empty after trimming
+    if (!skill) return;
+
+    // Block duplicate entries (case-insensitive)
+    if (isSkillSelected(skill)) return;
+
+    selectedSkills.push(skill);
+    renderSelectedChips();
+    syncSkillsHiddenInput();
+    updateQuickPickState();
+    // Once a skill is added, remove the "please add a skill" error if it was showing
+    clearFieldError("skills-error");
+    // Ensure the corresponding quick-pick chip is visually active immediately
+    try {
+      var quickChip = document.querySelector('.skill-chip[data-skill="' + skill + '"]');
+      if (quickChip) {
+        quickChip.classList.add('active', 'selected');
+        quickChip.setAttribute('aria-pressed', 'true');
+      }
+    } catch (e) {
+      // ignore DOM errors
+    }
+    // Keep focus in the input so user can continue typing
+    if (skillsTextInput) skillsTextInput.focus();
+  }
+
+  // remove a skill from the list and update the UI accordingly
+  function removeSkill(skill) {
+    // Rebuild the array without the skill that was just removed
+    selectedSkills = selectedSkills.filter(function (selectedSkill) {
+      return normalizeSkill(selectedSkill) !== normalizeSkill(skill);
+    });
+    renderSelectedChips();
+    syncSkillsHiddenInput();
+    updateQuickPickState();
+    // Also clear the visual active state on the quick-pick chip if present
+    try {
+      var quickChip = document.querySelector('.skill-chip[data-skill="' + skill + '"]');
+      if (quickChip) {
+        quickChip.classList.remove('active', 'selected');
+        quickChip.setAttribute('aria-pressed', 'false');
+      }
+    } catch (e) {
+      // ignore DOM errors
+    }
+  }
+
+  // recreate the selected skills chips based on the current array(selectedSkills)
+  // called every time we add or remove a skill
+  function renderSelectedChips() {
+    // Wipe out old chips first so we don't end up with duplicates in the UI
+    chipsSelectedEl.innerHTML = "";
+    selectedSkills.forEach(function (skill) {
+      // Create a new chip element for each selected skill
+      var chipEl = document.createElement("span");
+      chipEl.className = "skill-chip-selected";
+      chipEl.textContent = skill;
+
+      // Remove button for each chip (create lil "x" button)
+      var removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "skill-chip-remove";
+      removeBtn.innerHTML = "&times;"; //'x' symbol
+      removeBtn.setAttribute("aria-label", "Remove " + skill);
+      removeBtn.addEventListener("click", function (e) {
+        // Stop click from bubbling up to the chip wrap's click listener
+        e.stopPropagation();
+        removeSkill(skill);
+      });
+
+      chipEl.appendChild(removeBtn); // put x button inside the chip
+      chipsSelectedEl.appendChild(chipEl); //add chip to page
+    });
+  }
+
+  function syncSkillsHiddenInput() {
+    if (!skillsHidden) {
+      var skillsHidden = document.getElementById("skills");
+    }
+  }
+
+  updateQuickPickState();
+
+
+  // ----------------------------------------------------------
+  // Form validation
+  // ----------------------------------------------------------
+
+  //puts error msg under specific field
+  function showFieldError(fieldId, message) {
+    var el = document.getElementById(fieldId);
+    if (el) el.textContent = message;
+  }
+
+  //clears error msg under specific field
+  function clearFieldError(fieldId) {
+    var el = document.getElementById(fieldId);
+    if (el) el.textContent = ""; //empty string = no error msg
+  }
+
+  //clears all error msgs in the form, called at the start of form submission to reset any previous errors
+  function clearAllErrors() {
+    ["skills-error", "level-error", "interest-error", "time-error"].forEach(clearFieldError);
+    var generalErr = document.getElementById("form-error-general");
+    if (generalErr) generalErr.textContent = "";
+  }
+
   function validateForm() {
     var valid = true;
     if (!selectedSkills.length) {
@@ -613,18 +1074,8 @@ updateProfileWidgets();
   // Render result cards
   // ----------------------------------------------------------
 
-  function truncate(text, maxLength) {
-    if (!text) return "";
-    return text.length > maxLength ? text.slice(0, maxLength) + "..." : text;
-  }
-
-  function createTag(text, type) {
-    var span = document.createElement("span");
-    span.className = "project-tag project-tag--" + type;
-    span.textContent = text;
-    return span;
-  }
-
+  //takes the array of projects from the api and draws them on the page as cards
+  //if array is empty it shows the "no results" message instead
   // Renders project result cards or shows the empty-state message.
   function renderResults(projects, message) {
     resultsSection.style.display = "block";
@@ -659,12 +1110,25 @@ updateProfileWidgets();
       return;
     }
 
+    recordSearch();
     // Build a card for each project and add it to the grid
     projects.forEach(function (project) {
       resultsGrid.appendChild(buildProjectCard(project));
     });
 
     resultsSection.scrollIntoView({ behavior: "smooth" });
+  }
+
+  function truncate(text, maxLength) {
+    if (!text) return "";
+    return text.length > maxLength ? text.slice(0, maxLength) + "..." : text;
+  }
+
+  function createTag(text, type) {
+    var span = document.createElement("span");
+    span.className = "project-tag project-tag--" + type;
+    span.textContent = text;
+    return span;
   }
 
   function buildProjectCard(project) {
@@ -942,16 +1406,8 @@ updateProfileWidgets();
       hideSuggestions();
       return;
     }
-    if (event.key === "Enter") {
-      event.preventDefault();
-      if (activeSuggestionIndex >= 0 && visibleSuggestions[activeSuggestionIndex]) {
-        window.addSkill(visibleSuggestions[activeSuggestionIndex]);
-      } else {
-        window.addSkill(skillsInput.value);
-      }
-      skillsInput.value = "";
-      hideSuggestions();
-    }
+
+    
   });
 
   quickPickChips.forEach(function (chip) {
@@ -1047,7 +1503,7 @@ updateProfileWidgets();
         var general = document.getElementById("form-error-general");
         if (general) general.textContent = err.message || "An unexpected error occurred. Please try again.";
       });
-  });
+  })};
 
   // ----------------------------------------------------------
   // GitHub modal
@@ -1113,7 +1569,7 @@ updateProfileWidgets();
         });
     });
   }
-})();
+;
 
 
 // ============================================================
@@ -1294,30 +1750,4 @@ updateProfileWidgets();
     window.scrollTo({ top: atBottom ? 0 : document.body.scrollHeight, behavior: "smooth" });
   });
   update();
-})();
-(function initScrollSpy() {
-  var sections = document.querySelectorAll("section[id], header[id]");
-  var navLinks = document.querySelectorAll(".nav-link, .nav-mobile-link");
-
-  if (sections.length === 0 || navLinks.length === 0) return;
-
-  var observerOptions = {
-    root: null,
-    rootMargin: "0px 0px -50% 0px",
-    threshold: 0
-  };
-
-  var observer = new IntersectionObserver(function(entries) {
-    entries.forEach(function(entry) {
-      if (entry.isIntersecting) {
-        navLinks.forEach(function(link) {
-          link.classList.toggle('active', link.getAttribute('href') === '#' + entry.target.id);
-        });
-      }
-    });
-  }, observerOptions);
-
-  sections.forEach(function (sec) {
-    observer.observe(sec);
-  });
-})();
+})});

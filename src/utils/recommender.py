@@ -11,6 +11,12 @@ import os
 from utils.data_loader import load_all_projects
 
 MAX_RESULTS = 3
+MAX_RELATED = 3
+_CLUSTERS_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "data",
+    "clusters.json",
+)
 
 VALID_LEVELS = {"beginner", "intermediate", "advanced"}
 VALID_INTERESTS = {"web", "data", "education", "automation", "games", "cybersecurity", "devops", "backend", "tools", "productivity", "business logic", "mobile", "machine learning/ai"}
@@ -21,6 +27,7 @@ SCORING_WEIGHTS = {
     "interest": 2,
     "time": 1,
 }
+
 WEIGHT_SKILL = SCORING_WEIGHTS["skill"]
 WEIGHT_LEVEL = SCORING_WEIGHTS["level"]
 WEIGHT_INTEREST = SCORING_WEIGHTS["interest"]
@@ -32,7 +39,7 @@ VALID_INTERESTS = {
     "artificial intelligence", "cloud computing", "mobile app development",
     "backend", "tools", "productivity", "business logic"
 }
-
+VALID_TIMES = {"low", "medium", "high"}
 
 # Common aliases and abbreviations for skills
 # This improves recommendation accuracy by normalizing user input
@@ -45,8 +52,6 @@ SKILL_ALIASES = {
     "web dev": "javascript",
 }
 
-
-
 def parse_skills(skills_string):
     """
     Convert a raw skills string into a normalized lowercase list.
@@ -58,32 +63,21 @@ def parse_skills(skills_string):
         "JS, HTML5, CSS3"   -> ["javascript", "html", "css"]
     """
     stripped = skills_string.strip()
-
     if stripped.startswith("["):
         try:
             parsed = json.loads(stripped)
-
             if isinstance(parsed, list):
-                raw_skills = [
-                    str(s).strip().lower()
-                    for s in parsed
-                    if str(s).strip()
-                ]
-
-                return [
-                    SKILL_ALIASES.get(skill, skill)
-                    for skill in raw_skills
-                ]
-
+                raw_skills = [str(s).strip().lower() for s in parsed if str(s).strip()]
+                return [SKILL_ALIASES.get(skill, skill) for skill in raw_skills]
         except (json.JSONDecodeError, ValueError):
             pass
     raw_skills = [
         s.strip().lower()
-        for s in str(skills_string).split(",")
+        for s in skills_string.split(",")
         if s.strip()
     ]
-
     return [SKILL_ALIASES.get(skill, skill) for skill in raw_skills]
+
 def _tokenize(text):
     return re.findall(r"[a-z0-9]+", str(text).lower())
 
@@ -141,20 +135,14 @@ def _cosine_similarity(vec_a, vec_b):
 
 def ml_similarity_score(project, user_skills, level, interest, time_availability, all_projects):
     project_documents = [_tokenize(_project_text(p)) for p in all_projects]
-    user_tokens = _tokenize(
-        _user_text(user_skills, level, interest, time_availability)
-    )
+    user_tokens = _tokenize(_user_text(user_skills, level, interest, time_availability))
 
     idf_scores = _idf(project_documents + [user_tokens])
 
     user_vector = _tfidf_vector(user_tokens, idf_scores)
-    project_vector = _tfidf_vector(
-        _tokenize(_project_text(project)),
-        idf_scores,
-    )
+    project_vector = _tfidf_vector(_tokenize(_project_text(project)), idf_scores)
 
     return _cosine_similarity(user_vector, project_vector)
-
 
 def score_single_project(project, user_skills, level, interest, time_availability):
     TIME_RANKS = ["low", "medium", "high"]
@@ -171,57 +159,30 @@ def score_single_project(project, user_skills, level, interest, time_availabilit
     score = 0
 
     # Compare user's skills against the project's required skills
-    project_skills = [
-        SKILL_ALIASES.get(s.lower(), s.lower())
-        for s in project.get("skills", [])
-    ]
+    project_skills = [SKILL_ALIASES.get(s.lower(), s.lower()) for s in project.get("skills", [])]
+    matched_skills = sum(1 for skill in user_skills if skill in project_skills)
+    if project_skills:
+        coverage = matched_skills / len(project_skills)
+        score += matched_skills * SCORING_WEIGHTS["skill"] * coverage
+    else:
+        score += matched_skills * SCORING_WEIGHTS["skill"]
 
-    # Count matching skills
-    matched_skills = sum(
-        1 for skill in user_skills
-        if skill in project_skills
-    )
-
-    coverage_ratio = (
-        matched_skills / len(project_skills)
-        if project_skills
-        else 0
-    )
-
-    score += (
-        matched_skills
-        * SCORING_WEIGHTS["skill"]
-        * coverage_ratio
-    )
-    # Level match
     if project.get("level", "").lower() == level.lower():
         score += SCORING_WEIGHTS["level"]
 
     p_interest = project.get("interest", "").lower()
     u_interest = interest.lower()
-
-    if (
-        p_interest == u_interest
-        or (u_interest and u_interest in p_interest)
-        or (p_interest and p_interest in u_interest)
-    ):
+    # Use partial matching for interest as well
+    if p_interest == u_interest or (u_interest and u_interest in p_interest) or (p_interest and p_interest in u_interest):
         score += SCORING_WEIGHTS["interest"]
 
-# Time match
-    project_time = project.get("time", "").lower()
-    user_time = time_availability.lower()
-
-    if project_time == user_time:
+    if project.get("time", "").lower() == time_availability.lower():
         score += SCORING_WEIGHTS["time"]
         
     graph = _load_skill_graph()
     score += gap_boost(user_skills, project_skills, graph)
 
-    return score        
-
-
-
-
+    return score
 
 # ---------------------------------------------------------------------------
 # Skill graph helpers
@@ -230,7 +191,7 @@ def score_single_project(project, user_skills, level, interest, time_availabilit
 def _load_skill_graph():
     """Load skill_graph.json from data/. Returns empty dict on failure."""
     path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
         "data", "skill_graph.json"
     )
     if not os.path.exists(path):
@@ -393,23 +354,38 @@ def get_recommendations(skills_string, level, interest, time_availability):
             all_projects,
         )
         final_score = rule_score + similarity_score
-        
-
         if final_score > 0:
             scored_projects.append({
                 "project": project,
                 "score": final_score,
             })
+    # Sort projects in descending order so the
+    # most relevant recommendations appear first.
+    scored_projects.sort(key=lambda item: (item["score"], item["project"].get("id", 0)), reverse=True)
+    
+    top_projects = [item["project"] for item in scored_projects[:MAX_RESULTS]]
+    top_ids = [p["id"] for p in top_projects]
+    
+    cluster_data = _load_clusters()
+    related = _get_related(top_ids, all_projects, cluster_data) if cluster_data else []
+    
+    graph = _load_skill_graph()
+    progression = get_progression(user_skills, top_ids, all_projects, graph) if graph else []
+    
+    return {
+        "recommendations": top_projects,
+        "related": related,
+        "progression": progression,
+    }
 
-    scored_projects.sort(
-        key=lambda item: (
-            item["score"],
-            item["project"].get("id", 0),
-        ),
-        reverse=True,
-    )
+VALID_LEVELS = ["beginner", "intermediate", "advanced"]
+VALID_TIME_AVAILABILITY = ["low", "medium", "high"]
 
-    return [item["project"] for item in scored_projects[:MAX_RESULTS]]
+
+VALID_LEVELS = ["beginner", "intermediate", "advanced"]
+VALID_INTERESTS = ["data", "web", "backend", "cybersecurity", "games", "education", "automation"]
+VALID_TIME_AVAILABILITY = ["low", "medium", "high"]
+
 
 def validate_recommendation_inputs(skills, level, interest, time_availability):
     errors = []
