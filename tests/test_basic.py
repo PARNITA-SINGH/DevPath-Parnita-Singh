@@ -621,6 +621,23 @@ def test_download_code_found():
     assert response.status_code == 200
 
 
+
+
+def test_project_progress_unauthenticated_get():
+    """GET project progress should return 401 if unauthenticated."""
+    client = get_client()
+    response = client.get("/api/project/1/progress")
+    assert response.status_code == 401
+    assert b"Unauthorized" in response.data
+
+def test_project_progress_unauthenticated_post():
+    """POST project progress should return 401 if unauthenticated."""
+    client = get_client()
+    response = client.post("/api/project/1/progress", json={"completed_steps": [True, False]})
+    assert response.status_code == 401
+    assert b"Unauthorized" in response.data
+
+
 def test_view_code_nested_path():
     """A project with a nested starter_code path should still return 200."""
     client = get_client()
