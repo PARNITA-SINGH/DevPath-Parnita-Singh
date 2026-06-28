@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Offline mode with service worker caching for recently visited paths (#1219)
+- Service worker for intelligent caching and offline fallback
+- Offline detection banner with connection status feedback
+- Cached paths tracking for offline access
 - Completion certificate generation for finished learning paths (#1220)
 - PDF certificate download with jsPDF integration
 - Public certificate verification system using UUID codes
