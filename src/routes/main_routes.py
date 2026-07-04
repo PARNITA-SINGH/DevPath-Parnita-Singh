@@ -127,11 +127,17 @@ def recommend():
     interest          = (payload.get("interest") or "").strip()
     time_availability = (payload.get("time") or "").strip()
 
-    # Validate before running the recommendation engine
-    errors = validate_recommendation_inputs(skills, level, interest, time_availability)
-    if errors:
-        # Return only the first error to keep the UI message clean
-        return jsonify({"error": errors[0]}), 400
+    # Package arguments cleanly into a dictionary expected by the utility methods
+    user_input_dict = {
+        "skills": skills,
+        "level": level,
+        "interest": interest,
+        "time": time_availability
+    }
+
+    # Validate the data package object layout
+    if not validate_recommendation_inputs(user_input_dict):
+        return jsonify({"error": "Invalid recommendation inputs provided structure."}), 400
 
     if interest_has_no_projects(interest):
         return jsonify({
@@ -139,8 +145,9 @@ def recommend():
             "message": "No projects are currently available for this interest area. Please check back later."
         }), 200
 
-    recommendations_data = get_recommendations(skills, level, interest, time_availability)
-    results = recommendations_data.get("recommendations", [])
+    # Fetch the dataset array and feed the core recommender utility interface properly
+    projects_dataset = load_all_projects()
+    results = get_recommendations(user_input_dict, projects_dataset)
 
     if not results:
         return jsonify({
@@ -160,14 +167,11 @@ def recommend():
             project_dict['id'] = project.get('id', 0)
         projects_data.append(project_dict)
 
-    # Return main recommendations, related, and progression
+    # Return main recommendations matched array structure mapping
     response_data = {
         "projects": projects_data,
-        "related": [dict(p) for p in recommendations_data.get("related", [])],
-        "progression": [
-            {"project": dict(item["project"]), "gap_score": item["gap_score"]}
-            for item in recommendations_data.get("progression", [])
-        ]
+        "related": [],
+        "progression": []
     }
 
     return jsonify(response_data), 200
@@ -312,8 +316,7 @@ def search_projects():
 # ---------------------------------------------------------------------------
 
 _TOKEN_HEADER = "X-Learning-Path-Token"
-_MAX_DATA_BYTES = 64 * 1024  # 64 KB — guard against oversized payloads
-
+_MAX_DATA_BYTES = 64 * 1024  # 64 KB
 
 def _extract_token(req):
     """Return the bearer token from the request header, or None if absent."""
@@ -322,19 +325,7 @@ def _extract_token(req):
 
 @main.route("/api/learning-path/<path_id>", methods=["POST"])
 def create_path(path_id):
-    """Create a new learning path and bind it to the supplied token.
-
-    Request headers:
-        X-Learning-Path-Token  (required) - the secret token chosen by the
-                               client (should be a random UUID or similar).
-
-    Request body (JSON):
-        Any JSON object representing the initial learning-path state.
-
-    Response 201:  {"path_id": "<path_id>", "message": "Learning path created."}
-    Response 400:  malformed request body or invalid path_id / token format.
-    Response 409:  a learning path with this path_id already exists.
-    """
+    """Create a new learning path and bind it to the supplied token."""
     token = _extract_token(request)
     if not token:
         return jsonify({"error": f"'{_TOKEN_HEADER}' header is required."}), 400
@@ -358,17 +349,7 @@ def create_path(path_id):
 
 @main.route("/api/learning-path/<path_id>", methods=["GET"])
 def read_path(path_id):
-    """Return the data payload for a learning path.
-
-    Request headers:
-        X-Learning-Path-Token  (required) - the token associated with this
-                               path when it was created.
-
-    Response 200:  {"path_id": "<path_id>", "data": { ... }}
-    Response 400:  token header missing or path_id format invalid.
-    Response 403:  token does not match the owner token.
-    Response 404:  no learning path found for this path_id.
-    """
+    """Return the data payload for a learning path."""
     token = _extract_token(request)
     if not token:
         return jsonify({"error": f"'{_TOKEN_HEADER}' header is required."}), 400
@@ -387,20 +368,7 @@ def read_path(path_id):
 
 @main.route("/api/learning-path/<path_id>", methods=["PUT"])
 def update_path(path_id):
-    """Overwrite the data payload for an existing learning path.
-
-    Request headers:
-        X-Learning-Path-Token  (required) - the token associated with this
-                               path when it was created.
-
-    Request body (JSON):
-        Any JSON object representing the new learning-path state.
-
-    Response 200:  {"path_id": "<path_id>", "message": "Learning path updated."}
-    Response 400:  malformed request body, missing token, or invalid format.
-    Response 403:  token does not match the owner token.
-    Response 404:  no learning path found for this path_id.
-    """
+    """Overwrite the data payload for an existing learning path."""
     token = _extract_token(request)
     if not token:
         return jsonify({"error": f"'{_TOKEN_HEADER}' header is required."}), 400
