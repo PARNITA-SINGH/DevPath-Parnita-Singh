@@ -458,6 +458,9 @@ updateProfileWidgets();
     : quickPickChips.map(function (chip) { return chip.getAttribute("data-skill"); });
   var activeSuggestionIndex = -1;
   var visibleSuggestions = [];
+  var SAVED_PROJECTS_KEY = "devpathSavedProjects";
+  var hasSearched = false;
+  var techStackSelect = document.getElementById("tech_stack");
 
   function normalize(value) {
     return String(value || "").trim().toLowerCase();
@@ -931,12 +934,21 @@ updateProfileWidgets();
 
   var clearBtn = document.getElementById("clear-filters-btn");
   if (clearBtn) {
-    clearBtn.addEventListener("click", resetFormAndState);
-  }
-
-  var inlineResetBtn = document.getElementById("reset-form-btn");
-  if (inlineResetBtn) {
-    inlineResetBtn.addEventListener("click", resetFormAndState);
+    clearBtn.addEventListener("click", function () {
+      form.reset();
+      selectedSkills = [];
+      renderSelectedChips();
+      syncSkillsHiddenInput();
+      updateQuickPickState();
+      clearAllErrors();
+      hideSuggestions();
+      if (techStackSelect) {
+        techStackSelect.value = "all";
+      }
+      hasSearched = false;
+      resultsSection.style.display = "none";
+      skillsInput.focus();
+    });
   }
 
   var resetProgressBtn = document.getElementById("reset-progress-btn");
@@ -980,7 +992,8 @@ updateProfileWidgets();
         skills: JSON.stringify(selectedSkills),
         level: document.getElementById("level").value,
         interest: document.getElementById("interest").value,
-        time: document.getElementById("time").value
+        time: document.getElementById("time").value,
+        tech_stack: techStackSelect ? techStackSelect.value : "all"
       })
     })
       .then(function (response) {
@@ -992,6 +1005,7 @@ updateProfileWidgets();
       .then(function (data) {
         setLoadingState(false);
         recordSearch();
+        hasSearched = true;
         renderResults(data.projects || [], data.message);
       })
       .catch(function (err) {
@@ -1000,6 +1014,19 @@ updateProfileWidgets();
         if (general) general.textContent = "Unable to generate recommendations. Please try again.";
       });
   });
+
+  if (techStackSelect) {
+    techStackSelect.addEventListener("change", function () {
+      if (hasSearched) {
+        submitBtn.click();
+      }
+    });
+  }
+};
+
+  // ----------------------------------------------------------
+  // GitHub modal
+  // ----------------------------------------------------------
 
   var modal = document.getElementById("github-modal-overlay");
   var openModalBtn = document.getElementById("btn-show-github");
