@@ -53,7 +53,7 @@ def index():
 
 @main.route("/contact")
 def contact():
-    return render_template("contact.html", config=Config)
+    return render_template("contact.html")
 
 
 @main.route("/compare")
@@ -116,7 +116,7 @@ def recommend():
         return jsonify({"error": "Request body must be valid JSON."}), 400
 
     # Reject non-string values (e.g. null, lists, numbers) before calling .strip()
-    string_fields = ("skills", "level", "interest", "time", "tech_stack")
+    string_fields = ("skills", "level", "interest", "time")
     for field in string_fields:
         value = payload.get(field)
         if value is not None and not isinstance(value, str):
@@ -126,7 +126,6 @@ def recommend():
     level             = (payload.get("level") or "").strip()
     interest          = (payload.get("interest") or "").strip()
     time_availability = (payload.get("time") or "").strip()
-    tech_stack        = (payload.get("tech_stack") or "").strip()
 
     # Validate before running the recommendation engine
     errors = validate_recommendation_inputs(skills, level, interest, time_availability)
@@ -140,8 +139,7 @@ def recommend():
             "message": "No projects are currently available for this interest area. Please check back later."
         }), 200
 
-    recommendations_data = get_recommendations(skills, level, interest, time_availability, tech_stack)
-    results = recommendations_data.get("recommendations", [])
+    results = get_recommendations(skills, level, interest, time_availability)
 
     if not results:
         return jsonify({
@@ -152,38 +150,8 @@ def recommend():
             )
         }), 200
 
-    recommendations_data = get_recommendations(skills, level, interest, time_availability)
-    results = recommendations_data.get("recommendations", [])
+    return jsonify({"projects": results}), 200
 
-    if not results:
-        return jsonify({
-            "projects": [],
-            "message": (
-                "No projects matched your inputs. "
-                "Try different skills or broaden your interest area."
-            )
-        }), 200
-
-    # Ensure all projects have IDs in the response
-    projects_data = []
-    for project in results:
-        project_dict = dict(project)  # Convert to dict if needed
-        # Make sure ID is included
-        if 'id' not in project_dict:
-            project_dict['id'] = project.get('id', 0)
-        projects_data.append(project_dict)
-
-    # Return main recommendations, related, and progression
-    response_data = {
-        "projects": projects_data,
-        "related": [dict(p) for p in recommendations_data.get("related", [])],
-        "progression": [
-            {"project": dict(item["project"]), "gap_score": item["gap_score"]}
-            for item in recommendations_data.get("progression", [])
-        ]
-    }
-
-    return jsonify(response_data), 200
 
 @main.route("/api/project/<int:project_id>/resources")
 def project_resources(project_id):
