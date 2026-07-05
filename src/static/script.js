@@ -1574,7 +1574,7 @@ updateProfileWidgets();
 
   window.addEventListener("scroll", update, { passive: true });
   button.addEventListener("click", function () {
-    window.scrollTo({ top: atBottom ? 0 : document.body.scrollHeight, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });
   });
   update();
 })();
