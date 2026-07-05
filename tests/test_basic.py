@@ -245,6 +245,39 @@ def test_home_route():
     assert response.status_code == 200
 
 
+def test_contact_page_renders_send_message_form():
+    """Contact page should include the external form handler and required fields."""
+    client = get_client()
+    response = client.get("/contact")
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert 'class="contact-form"' in html
+    assert 'action="https://formspree.io/f/your-form-id"' in html
+    assert 'method="POST"' in html
+    assert 'name="name"' in html
+    assert 'name="email"' in html
+    assert 'name="message"' in html
+    assert "Send Message" in html
+
+
+def test_security_headers_present():
+    """Security headers should be included in all responses."""
+    client = get_client()
+    response = client.get("/")
+
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert (
+        response.headers["Referrer-Policy"]
+        == "strict-origin-when-cross-origin"
+    )
+    assert (
+        response.headers["Permissions-Policy"]
+        == "geolocation=(), microphone=(), camera=()"
+    )
+
 def test_recommend_api():
     client = get_client()
     response = client.post("/api/recommend", json={
