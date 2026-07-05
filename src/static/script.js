@@ -1574,34 +1574,74 @@ updateProfileWidgets();
   update();
 })();
 
-// Added via Git Bash for GSSoC '26 - Surprise Me Feature
+// ==========================================
+// Git Bash Feature Injection: Project Tracker (GSSoC '26)
+// ==========================================
 document.addEventListener('DOMContentLoaded', () => {
-  const surpriseBtn = document.getElementById('surprise-btn');
-  if (surpriseBtn) {
-    surpriseBtn.addEventListener('click', async () => {
-      try {
-        // Fetch the projects dataset (Assuming app serves data or reads local window object)
-        const response = await fetch('/data/projects.json'); 
-        if (!response.ok) throw new Error('Network response was not ok');
-        const dataset = await response.json();
+  // Try parsing the current Project ID from URL search params or metadata attributes
+  const urlParams = new URLSearchParams(window.location.search);
+  const projectId = urlParams.get('id') || window.location.pathname.split('/').pop() || 'default';
+  const storageKey = `devpath_progress_${projectId}`;
+
+  const roadmapItems = document.querySelectorAll('.roadmap-step, .roadmap-item, .step-card');
+  const progressText = document.getElementById('progress-text');
+  const progressFill = document.getElementById('progress-fill');
+
+  if (roadmapItems.length === 0) return;
+
+  // Retrieve existing checked step indexes array from localStorage
+  let savedProgress = JSON.parse(localStorage.getItem(storageKey)) || [];
+
+  function updateTrackerUI() {
+    let completedCount = 0;
+    
+    roadmapItems.forEach((item, index) => {
+      let checkbox = item.querySelector('.step-checker');
+      
+      // If checkbox isn't built into the static template yet, prepend it dynamically via JS
+      if (!checkbox) {
+        checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'step-checker';
+        checkbox.style.marginRight = '12px';
+        checkbox.style.cursor = 'pointer';
+        item.insertBefore(checkbox, item.firstChild);
         
-        if (dataset && dataset.length > 0) {
-          // Shuffle and pick 3 random items
-          const shuffled = [...dataset].sort(() => 0.5 - Math.random());
-          const selectedProjects = shuffled.slice(0, 3);
-          
-          // Call the existing project rendering function if it exists in script.js
-          if (typeof displayProjects === 'function') {
-            displayProjects(selectedProjects);
-          } else if (typeof renderProjects === 'function') {
-            renderProjects(selectedProjects);
-          } else {
-            console.log("Random Projects:", selectedProjects);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching random projects:", error);
+        // Setup event observer
+        checkbox.addEventListener('change', () => toggleStep(index, checkbox.checked));
+      }
+
+      // Restore checked states
+      if (savedProgress.includes(index)) {
+        checkbox.checked = true;
+        item.classList.add('step-completed');
+        completedCount++;
+      } else {
+        checkbox.checked = false;
+        item.classList.remove('step-completed');
       }
     });
+
+    // Calculate percentage mathematics
+    const totalSteps = roadmapItems.length;
+    const percentage = Math.round((completedCount / totalSteps) * 100) || 0;
+
+    if (progressText && progressFill) {
+      progressText.textContent = `${percentage}% Completed (${completedCount}/${totalSteps} steps)`;
+      progressFill.style.width = `${percentage}%`;
+    }
   }
+
+  function toggleStep(index, isChecked) {
+    if (isChecked) {
+      if (!savedProgress.includes(index)) savedProgress.push(index);
+    } else {
+      savedProgress = savedProgress.filter(i => i !== index);
+    }
+    localStorage.setItem(storageKey, JSON.stringify(savedProgress));
+    updateTrackerUI();
+  }
+
+  // Initialize view state
+  updateTrackerUI();
 });
