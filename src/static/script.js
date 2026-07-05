@@ -1567,17 +1567,41 @@ updateProfileWidgets();
       return window.innerHeight + window.pageYOffset >= document.body.scrollHeight - 40;
     }
 
-    function update() {
-      button.classList.toggle("visible", window.pageYOffset > 200);
-      atBottom = nearBottom();
-      button.setAttribute("aria-label", atBottom ? "Scroll to top" : "Scroll to bottom");
-      button.title = atBottom ? "Scroll to top" : "Scroll to bottom";
-      if (icon) icon.innerHTML = atBottom ? '<polyline points="18 15 12 9 6 15"/>' : '<polyline points="6 9 12 15 18 9"/>';
-    }
+  window.addEventListener("scroll", update, { passive: true });
+  button.addEventListener("click", function () {
+    window.scrollTo({ top: atBottom ? 0 : document.body.scrollHeight, behavior: "smooth" });
+  });
+  update();
+})();
 
-    window.addEventListener("scroll", update, { passive: true });
-    button.addEventListener("click", function () {
-      window.scrollTo({ top: atBottom ? 0 : document.body.scrollHeight, behavior: "smooth" });
+// Added via Git Bash for GSSoC '26 - Surprise Me Feature
+document.addEventListener('DOMContentLoaded', () => {
+  const surpriseBtn = document.getElementById('surprise-btn');
+  if (surpriseBtn) {
+    surpriseBtn.addEventListener('click', async () => {
+      try {
+        // Fetch the projects dataset (Assuming app serves data or reads local window object)
+        const response = await fetch('/data/projects.json'); 
+        if (!response.ok) throw new Error('Network response was not ok');
+        const dataset = await response.json();
+        
+        if (dataset && dataset.length > 0) {
+          // Shuffle and pick 3 random items
+          const shuffled = [...dataset].sort(() => 0.5 - Math.random());
+          const selectedProjects = shuffled.slice(0, 3);
+          
+          // Call the existing project rendering function if it exists in script.js
+          if (typeof displayProjects === 'function') {
+            displayProjects(selectedProjects);
+          } else if (typeof renderProjects === 'function') {
+            renderProjects(selectedProjects);
+          } else {
+            console.log("Random Projects:", selectedProjects);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching random projects:", error);
+      }
     });
-    update();
-  })();
+  }
+});
