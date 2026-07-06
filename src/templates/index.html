@@ -1048,12 +1048,13 @@
                 <div class="form-error-msg" id="tech-error"></div>
               </div>
             </div>
+            <div class="form-error-msg" id="form-error-general" style="color:#ef4444;margin-bottom:8px;"></div>
             <div class="form-actions">
               <button type="submit" class="btn-submit" id="submit-btn">
-              <button type="button" class="btn-surprise" id="surprise-btn">🎲 Surprise Me</button>
                 <span id="btn-label">Generate My Projects</span>
                 <span id="btn-loading" style="display:none;">Finding matches...</span>
               </button>
+              <button type="button" class="btn-surprise" id="surprise-btn">🎲 Surprise Me</button>
             </div>
 
           </form>
@@ -1284,9 +1285,6 @@
 
   {% include 'partials/scroll_top_btn.html' %}
 
-  <script src="/static/script.js"></script>
-  </script>
-    
   <script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
 
   <script src="/static/animations.js"></script>
