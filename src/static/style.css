@@ -3939,6 +3939,10 @@ input[type="text"]:not(.skill-input-wrap input):focus {
 }
 
 @media (max-width: 480px) {
+  .nav-mobile-menu {
+    padding: 80px 16px 16px;
+  }
+
   .footer {
     padding: 48px 18px 0;
   }
