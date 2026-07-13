@@ -59,31 +59,47 @@ SKILL_ALIASES = {
     "web dev": "javascript",
 }
 
-def parse_skills(skills_string):
-    """
-    Convert a raw skills string into a normalized lowercase list.
-    Accepts either a JSON array (e.g. '["Python","React"]') or a
-    comma-separated string (e.g. "JS, HTML5, CSS3").
-
-    Example:
-        '["Python","React"]' -> ["python", "react"]
-        "JS, HTML5, CSS3"   -> ["javascript", "html", "css"]
-    """
+def parse_skill_entries(skills_string):
+    """Parse skills with optional per-skill proficiency levels."""
     stripped = skills_string.strip()
+
     if stripped.startswith("["):
         try:
             parsed = json.loads(stripped)
             if isinstance(parsed, list):
-                raw_skills = [str(s).strip().lower() for s in parsed if str(s).strip()]
-                return [SKILL_ALIASES.get(skill, skill) for skill in raw_skills]
+                entries = []
+                for item in parsed:
+                    if isinstance(item, dict):
+                        skill = str(item.get("skill", "")).strip().lower()
+                        proficiency = str(item.get("proficiency", "Beginner")).strip().title()
+                    else:
+                        skill = str(item).strip().lower()
+                        proficiency = "Beginner"
+
+                    if skill:
+                        entries.append({
+                            "skill": SKILL_ALIASES.get(skill, skill),
+                            "proficiency": proficiency if proficiency in ("Beginner", "Intermediate", "Advanced") else "Beginner",
+                        })
+                return entries
         except (json.JSONDecodeError, ValueError):
             pass
-    raw_skills = [
-        s.strip().lower()
-        for s in skills_string.split(",")
-        if s.strip()
+
+    return [
+        {
+            "skill": SKILL_ALIASES.get(skill, skill),
+            "proficiency": "Beginner",
+        }
+        for skill in (
+            s.strip().lower()
+            for s in skills_string.split(",")
+            if s.strip()
+        )
     ]
-    return [SKILL_ALIASES.get(skill, skill) for skill in raw_skills]
+
+
+def parse_skills(skills_string):
+    return [entry["skill"] for entry in parse_skill_entries(skills_string)]
 
 def _tokenize(text):
     return re.findall(r"[a-z0-9]+", str(text).lower())
@@ -151,7 +167,7 @@ def ml_similarity_score(project, user_skills, level, interest, time_availability
 
     return _cosine_similarity(user_vector, project_vector)
 
-def score_single_project(project, user_skills, level, interest, time_availability):
+def score_single_project(project, user_skills, level, interest, time_availability, skill_proficiencies=None):
     TIME_RANKS = ["low", "medium", "high"]
 
     user_time    = time_availability.strip().lower()
@@ -168,11 +184,22 @@ def score_single_project(project, user_skills, level, interest, time_availabilit
     # Compare user's skills against the project's required skills
     project_skills = [SKILL_ALIASES.get(s.lower(), s.lower()) for s in project.get("skills", [])]
     matched_skills = sum(1 for skill in user_skills if skill in project_skills)
+    proficiency_weights = {
+        "beginner": 1.0,
+        "intermediate": 1.5,
+        "advanced": 2.0,
+    }
+    skill_proficiencies = skill_proficiencies or {}
+    weighted_skill_score = sum(
+        proficiency_weights.get(skill_proficiencies.get(skill, "Beginner").lower(), 1.0)
+        for skill in user_skills
+        if skill in project_skills
+    )
     if project_skills:
         coverage = matched_skills / len(project_skills)
-        score += matched_skills * SCORING_WEIGHTS["skill"] * coverage
+        score += weighted_skill_score * SCORING_WEIGHTS["skill"] * coverage
     else:
-        score += matched_skills * SCORING_WEIGHTS["skill"]
+        score += weighted_skill_score * SCORING_WEIGHTS["skill"]
 
     level_match = False
     if project.get("level", "").lower() == level.lower():
@@ -384,7 +411,12 @@ def project_matches_tech(project, tech_stack):
 
 
 def get_recommendations(skills_string, level, interest, time_availability, tech_stack="all"):
-    user_skills = parse_skills(skills_string)
+    skill_entries = parse_skill_entries(skills_string)
+    user_skills = [entry["skill"] for entry in skill_entries]
+    skill_proficiencies = {
+        entry["skill"]: entry["proficiency"]
+        for entry in skill_entries
+    }
     all_projects = load_all_projects()
     
     if tech_stack and tech_stack.lower() != "all":
@@ -399,6 +431,7 @@ def get_recommendations(skills_string, level, interest, time_availability, tech_
             level,
             interest,
             time_availability,
+            skill_proficiencies,
         )
         if isinstance(score_result, tuple):
             rule_score, match_details = score_result
