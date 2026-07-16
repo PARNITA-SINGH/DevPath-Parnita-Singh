@@ -13,3 +13,5 @@ Flask-WTF==1.2.2
 # Testing (optional but recommended for contributors)
 pytest==8.2.2
 flake8==7.0.0
+python-dotenv==1.0.1
+requests==2.32.3
