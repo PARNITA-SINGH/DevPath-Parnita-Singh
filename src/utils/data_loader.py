@@ -1,12 +1,19 @@
 # utils/data_loader.py
+# utils/data_loader.py
 import json
 import os
 import threading
 import logging
+from pathlib import Path
 
 from utils.url_validator import is_valid_url, parse_resource
 
-DATA_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "data", "projects.json")
+# 1. __file__ is src/utils/data_loader.py
+# 2. .parent is src/utils/
+# 3. .parent.parent is src/
+# 4. .parent.parent.parent gets us to the true DevPath root directory!
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+DATA_FILE = BASE_DIR / "data" / "projects.json"
 
 logger = logging.getLogger("devpath.data_loader")
 
