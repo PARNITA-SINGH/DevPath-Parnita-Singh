@@ -58,6 +58,10 @@ SKILL_ALIASES = {
     "c++": "cpp",
     "web dev": "javascript",
 }
+def _normalize_skill(s: str) -> str:
+    """Normalize a skill string: strip surrounding whitespace and lowercase."""
+    return s.strip().lower()
+
 
 def parse_skill_entries(skills_string):
     """Parse skills with optional per-skill proficiency levels."""
@@ -70,32 +74,43 @@ def parse_skill_entries(skills_string):
                 entries = []
                 for item in parsed:
                     if isinstance(item, dict):
-                        skill = str(item.get("skill", "")).strip().lower()
+                        skill = _normalize_skill(str(item.get("skill", "")))
                         proficiency = str(item.get("proficiency", "Beginner")).strip().title()
                     else:
-                        skill = str(item).strip().lower()
+                        skill = _normalize_skill(str(item))
                         proficiency = "Beginner"
 
                     if skill:
-                        entries.append({
-                            "skill": SKILL_ALIASES.get(skill, skill),
-                            "proficiency": proficiency if proficiency in ("Beginner", "Intermediate", "Advanced") else "Beginner",
-                        })
+                        entries.append(
+                            {
+                                "skill": SKILL_ALIASES.get(skill, skill),
+                                "proficiency": (
+                                    proficiency
+                                    if proficiency in (
+                                        "Beginner",
+                                        "Intermediate",
+                                        "Advanced",
+                                    )
+                                    else "Beginner"
+                                ),
+                            }
+                        )
                 return entries
         except (json.JSONDecodeError, ValueError):
             pass
 
     return [
         {
-            "skill": SKILL_ALIASES.get(skill, skill),
+            "skill": SKILL_ALIASES.get(_normalize_skill(skill), _normalize_skill(skill)),
             "proficiency": "Beginner",
         }
-        for skill in (
-            s.strip().lower()
-            for s in skills_string.split(",")
-            if s.strip()
-        )
+        for skill in skills_string.split(",")
+        if skill.strip()
     ]
+
+
+def parse_skills(skills_string):
+    return [entry["skill"] for entry in parse_skill_entries(skills_string)]
 
 
 def parse_skills(skills_string):
@@ -182,7 +197,7 @@ def score_single_project(project, user_skills, level, interest, time_availabilit
     score = 0
 
     # Compare user's skills against the project's required skills
-    project_skills = [SKILL_ALIASES.get(s.lower(), s.lower()) for s in project.get("skills", [])]
+    project_skills = [SKILL_ALIASES.get(_normalize_skill(s), _normalize_skill(s)) for s in project.get("skills", [])]
     matched_skills = sum(1 for skill in user_skills if skill in project_skills)
     proficiency_weights = {
         "beginner": 1.0,
@@ -309,7 +324,7 @@ def get_progression(user_skills, recommended_ids, all_projects, graph):
         if project["id"] in recommended_ids:
             continue
         project_skills = [
-            SKILL_ALIASES.get(s.lower(), s.lower())
+            SKILL_ALIASES.get(_normalize_skill(s), _normalize_skill(s))
             for s in project.get("skills", [])
         ]
         # Project skills must overlap with reachable skills

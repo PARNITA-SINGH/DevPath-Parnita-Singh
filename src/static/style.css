@@ -1686,6 +1686,11 @@ html[data-theme="dark"] .theme-toggle-label::before {
   margin-bottom: 24px;
 }
 
+.form-group-skills {
+  position: relative;
+  z-index: 100;
+}
+
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1838,54 +1843,57 @@ label {
 .skills-dropdown .suggestion-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  position: relative;
+  border-left: 3px solid transparent;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
+/* Hidden by default — no visible checkbox for unselected items */
 .skills-dropdown .suggestion-item::before {
   content: '';
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 1.5px solid var(--gray-300);
-  border-radius: 3px;
-  flex-shrink: 0;
-  transition: all 0.15s ease;
+  display: none;
 }
 
+/* Show a filled indigo checkmark dot when the item is selected */
 .skills-dropdown .suggestion-item.selected::before {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
   background: var(--indigo-600);
-  border-color: var(--indigo-600);
-  box-shadow: inset 0 0 0 2px var(--white);
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .skills-dropdown .suggestion-item:hover {
   background: var(--indigo-50);
+  border-left-color: var(--indigo-400);
 }
 
 /*suggestions dropdown*/
-/* Suggestions dropdown */
+/* Suggestions dropdown container */
 .skills-suggestions {
   position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
+  top: 0;
+  left: 100%;
+  width: 6px;
   background: var(--surface);
-  border: 1.5px solid var(--indigo-100);
-  border-top: none;
+  border: 1.5px solid var(--indigo-200);
+  border-top: 2px solid var(--indigo-400);
   border-radius: 0 0 var(--r-sm) var(--r-sm);
   margin-top: -1px;
-  max-height: 280px;
+  max-height: 240px;
   overflow-y: auto;
   z-index: 1000;
   display: none;
-  box-shadow: 0 8px 24px rgba(79, 110, 247, 0.15);
+  box-shadow: 0 8px 20px rgba(79, 110, 247, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
 }
 
 .suggestion-item {
-  padding: 12px 14px;
+  padding: 8px 14px;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   color: var(--gray-700);
   border-bottom: 1px solid var(--gray-100);
 }
@@ -1898,7 +1906,8 @@ label {
 .suggestion-item--active {
   background: var(--indigo-50);
   color: var(--indigo-700);
-  font-weight: 500;
+  font-weight: 600;
+  border-left-color: var(--indigo-500);
 }
 
 /* Scrollbar styling for suggestions dropdown */
@@ -1913,6 +1922,7 @@ label {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
+  transition: visibility 0s;
   margin-bottom: 24px;
 }
 
@@ -1925,7 +1935,7 @@ label {
   border-radius: var(--r-full);
   padding: 5px 14px;
   cursor: pointer;
-  transition: background var(--t), border-color var(--t), color var(--t);
+  transition: background var(--t), border-color var(--t), color var(--t), transform 0.3s ease;
 }
 
 .skill-chip:hover,
@@ -1933,6 +1943,7 @@ label {
   background: var(--indigo-700);
   border-color: var(--indigo-700);
   color: #ffffff;
+  transform: translateY(-5px);
 }
 
 .skill-chip:focus-visible {
@@ -2109,10 +2120,10 @@ body.dark-theme .btn-clear:hover {
   }
 }
 
-.btn-submit:hover {
+.btn-submit:hover:not(:disabled) {
   opacity: 0.93;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 28px rgba(35, 53, 194, 0.42);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 32px rgba(35, 53, 194, 0.6);
 }
 
 .btn-submit:focus-visible {
@@ -2340,6 +2351,56 @@ body.dark-theme .btn-clear:hover {
   line-height: 1.7;
   flex: 1;
 }
+.project-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 480px;
+}
+
+.project-card-description {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 140px;
+  padding-right: 0.75rem;
+  margin: 1rem 0 1.25rem 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: inherit;
+}
+
+/* Scrollbar styling */
+.project-card-description::-webkit-scrollbar {
+  width: 6px;
+}
+
+.project-card-description::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.project-card-description::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+.project-card-description::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Firefox scrollbar */
+.project-card-description {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+
+/* Dark mode scrollbar */
+[data-theme="dark"] .project-card-description::-webkit-scrollbar-thumb {
+  background: #4a5568;
+}
+
+[data-theme="dark"] .project-card-description::-webkit-scrollbar-thumb:hover {
+  background: #718096;
+}
 
 .project-card-tags {
   display: flex;
@@ -2354,7 +2415,7 @@ body.dark-theme .btn-clear:hover {
   border-radius: var(--r-full);
 }
 
-.project-tag--skill        { background: var(--indigo-100); color: var(--indigo-700); }
+.project-tag--skill        { background: var(--indigo-100); color:white; }
 .project-tag--time         { background: var(--gray-100);   color: var(--gray-600);   }
 .project-tag--beginner     { background: var(--green-100);  color: #065f46; }
 .project-tag--intermediate { background: var(--yellow-100); color: #78350f; }
@@ -2388,6 +2449,11 @@ body.dark-theme .btn-clear:hover {
   background: var(--indigo-600);
   border-color: var(--indigo-600);
   color: #ffffff;
+}
+
+.btn-save-project:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .btn-details {
@@ -3676,6 +3742,11 @@ body.dark-theme .btn-clear:hover {
   color: var(--text-heading);
 }
 
+.btn-ghost:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
 .btn-mark-complete {
   margin-top: 18px;
   width: 100%;
@@ -4168,6 +4239,10 @@ body.dark-theme .btn-clear:hover {
 }
 
 @media (max-width: 480px) {
+  .nav-mobile-menu {
+    padding: 80px 16px 16px;
+  }
+
   .footer {
     padding: 48px 18px 0;
   }
@@ -4979,6 +5054,11 @@ body.dark-theme .theme-toggle:hover {
   transform: translateY(-1px);
 }
 
+.compare-quick-btn:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
 .compare-results {
   display: flex;
   flex-direction: column;
@@ -5400,6 +5480,11 @@ body.dark-theme .theme-toggle:hover {
   color: var(--danger);
 }
 
+.reset-btn-mini:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
 /* Badges Grid Mini */
 .badges-grid-mini {
   display: flex;
@@ -5526,6 +5611,11 @@ body.dark-theme .theme-toggle:hover {
 .la-tab.active {
   background: var(--primary);
   color: white;
+}
+
+.la-tab:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .la-content {
