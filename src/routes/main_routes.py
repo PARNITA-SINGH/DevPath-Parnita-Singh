@@ -25,6 +25,8 @@ from utils.skill_progression import (
 )
 from utils.code_review import CodeReviewManager
 from config import Config
+from flask import jsonify
+from utils.portfolio_analyzer import analyze_portfolio
 import os
 
 _skill_validator = SkillProgressionValidator()
@@ -804,6 +806,36 @@ def update_path(path_id):
         return jsonify({"error": "Forbidden: invalid token for this path."}), 403
 
     return jsonify({"path_id": path_id, "message": "Learning path updated."}), 200
+@main.route("/api/portfolio-analysis", methods=["POST"])
+def portfolio_analysis():
+    """
+    Analyze the user's completed projects and return
+    portfolio diversity information.
+    """
+
+    payload = request.get_json(silent=True)
+
+    if payload is None:
+        return jsonify({"error": "Invalid JSON payload"}), 400
+
+    print(payload)
+
+    completed_ids = payload.get("completed_projects", [])
+
+    if not isinstance(completed_ids, list):
+        return jsonify({"error": "'completed_projects' must be a list"}), 400
+
+    all_projects = load_all_projects()
+
+    completed_projects = [
+        project
+        for project in all_projects
+        if project["id"] in completed_ids
+    ]
+
+    result = analyze_portfolio(completed_projects)
+
+    return jsonify(result), 200
 
 # Constants for learning velocity recommendations
 VELOCITY_SLOW_THRESHOLD = 1.2
