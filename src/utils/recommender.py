@@ -180,7 +180,7 @@ def ml_similarity_score(project, user_skills, level, interest, time_availability
 
     return _cosine_similarity(user_vector, project_vector)
 
-def score_single_project(project, user_skills, level, interest, time_availability, skill_proficiencies=None):
+def score_single_project(project, user_skills, level, interest, time_availability, graph=None ):
     TIME_RANKS = ["low", "medium", "high"]
 
     user_time    = time_availability.strip().lower()
@@ -230,9 +230,10 @@ def score_single_project(project, user_skills, level, interest, time_availabilit
     time_match = False
     if project.get("time", "").lower() == time_availability.lower():
         score += SCORING_WEIGHTS["time"]
-        time_match = True
-
-    graph = _load_skill_graph()
+        
+    if graph is None:
+        graph = _load_skill_graph()
+        
     score += gap_boost(user_skills, project_skills, graph)
 
     matched_skills_list = [skill for skill in user_skills if skill in project_skills]
@@ -445,10 +446,7 @@ def get_recommendations(skills_string, level, interest, time_availability, tech_
         for entry in skill_entries
     }
     all_projects = load_all_projects()
-    
-    if tech_stack and tech_stack.lower() != "all":
-        all_projects = [p for p in all_projects if project_matches_tech(p, tech_stack)]
-        
+    graph = _load_skill_graph()
     scored_projects = []
     graph = _load_skill_graph()
     for project in all_projects:
@@ -458,7 +456,7 @@ def get_recommendations(skills_string, level, interest, time_availability, tech_
             level,
             interest,
             time_availability,
-            skill_proficiencies,
+            graph,
         )
         if isinstance(score_result, tuple):
             rule_score, match_details = score_result
@@ -569,7 +567,6 @@ def get_recommendations(skills_string, level, interest, time_availability, tech_
     cluster_data = _load_clusters()
     related = _get_related(top_ids, all_projects, cluster_data) if cluster_data else []
     
-    graph = _load_skill_graph()
     progression = get_progression(user_skills, top_ids, all_projects, graph) if graph else []
     
     return {
