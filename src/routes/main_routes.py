@@ -6,9 +6,10 @@
 from flask import Blueprint, render_template, request, jsonify, send_from_directory, abort, make_response
 
 from utils.recommender import get_recommendations, validate_recommendation_inputs
-from utils.data_loader import find_project_by_id, load_all_projects, get_available_levels, get_project_stats
+from utils.data_loader import find_project_by_id, load_all_projects, get_available_levels, get_project_stats, get_available_interests
 from utils.roadmap_comparer import load_all_career_roadmaps, compare_roadmaps
 from utils.file_server import read_starter_code, resolve_starter_file, get_starter_code_dir
+from utils.rate_limiter import rate_limit
 from utils.learning_path import (
     create_learning_path,
     get_learning_path,
@@ -50,6 +51,7 @@ def index():
     try:
         stats = get_project_stats()
         available_levels = get_available_levels()
+        available_interests = get_available_interests()
     except Exception as e:
         # In development, we prefer rendering a fallback homepage rather than
         # aborting entirely. Log the error and use safe defaults so UI/layout
@@ -57,8 +59,9 @@ def index():
         print("Warning: failed to load project stats:", e)
         stats = {"total_projects": 0, "unique_skills": 0, "beginner_friendly": 0}
         available_levels = ["Beginner", "Intermediate", "Advanced"]
+        available_interests = []
 
-    return render_template("index.html", stats=stats, available_levels=available_levels, config=Config)
+    return render_template("index.html", stats=stats, available_levels=available_levels, available_interests=available_interests, config=Config)
 
 @main.route("/contact")
 def contact():
@@ -109,6 +112,7 @@ def health_check():
 
 
 @main.route("/api/recommend", methods=["POST"])
+@rate_limit(max_requests=10, window_seconds=60)
 def recommend():
     """
     Accept a JSON body with user inputs and return matching project recommendations.
@@ -151,27 +155,6 @@ def recommend():
 
     recommendations_data = get_recommendations(skills, level, interest, time_availability, tech_stack)
     results = recommendations_data.get("recommendations", [])
-
-    if not results:
-        return jsonify({
-            "projects": [],
-            "message": (
-                "No projects matched your inputs. "
-                "Try different skills or broaden your interest area."
-            )
-        }), 200
-
-    recommendations_data = get_recommendations(skills, level, interest, time_availability)
-    results = recommendations_data.get("recommendations", [])
-
-    if not results:
-        return jsonify({
-            "projects": [],
-            "message": (
-                "No projects matched your inputs. "
-                "Try different skills or broaden your interest area."
-            )
-        }), 200
 
     # Ensure all projects have IDs in the response
     projects_data = []
@@ -247,6 +230,7 @@ def view_code(project_id):
 
 
 @main.route("/project/<int:project_id>/download")
+@rate_limit(max_requests=20, window_seconds=60)
 def download_code(project_id):
     """Serve the starter code file as a downloadable attachment."""
     project = find_project_by_id(project_id)
@@ -291,6 +275,7 @@ def robots():
     return send_from_directory("static", "robots.txt", mimetype="text/plain")
 
 @main.route("/api/search")
+@rate_limit(max_requests=30, window_seconds=60)
 def search_projects():
     """Return projects matching the user's search query."""
 
@@ -705,6 +690,7 @@ def _extract_token(req):
 
 
 @main.route("/api/learning-path/<path_id>", methods=["POST"])
+@rate_limit(max_requests=10, window_seconds=60)
 def create_path(path_id):
     """Create a new learning path and bind it to the supplied token.
 
@@ -730,6 +716,11 @@ def create_path(path_id):
     if not isinstance(payload, dict):
         return jsonify({"error": "Request body must be a JSON object."}), 400
 
+    if len(request.data) > _MAX_DATA_BYTES:
+        return jsonify({
+            "error": f"Payload too large. Maximum allowed size is {_MAX_DATA_BYTES // 1024} KB."
+        }), 400
+
     try:
         create_learning_path(path_id, token, payload)
     except ValueError as exc:
@@ -741,6 +732,7 @@ def create_path(path_id):
 
 
 @main.route("/api/learning-path/<path_id>", methods=["GET"])
+@rate_limit(max_requests=20, window_seconds=60)
 def read_path(path_id):
     """Return the data payload for a learning path.
 
@@ -770,6 +762,7 @@ def read_path(path_id):
 
 
 @main.route("/api/learning-path/<path_id>", methods=["PUT"])
+@rate_limit(max_requests=10, window_seconds=60)
 def update_path(path_id):
     """Overwrite the data payload for an existing learning path.
 
@@ -795,6 +788,11 @@ def update_path(path_id):
 
     if not isinstance(payload, dict):
         return jsonify({"error": "Request body must be a JSON object."}), 400
+
+    if len(request.data) > _MAX_DATA_BYTES:
+        return jsonify({
+            "error": f"Payload too large. Maximum allowed size is {_MAX_DATA_BYTES // 1024} KB."
+        }), 400
 
     try:
         update_learning_path(path_id, token, payload)
