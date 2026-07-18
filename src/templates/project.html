@@ -86,12 +86,15 @@
         <div class="detail-hero-left">
           <h1 class="detail-title">{{ project.title }}</h1>
           <div class="badge-group">
-            <span class="badge badge--{{ project.level | lower }}">{{ project.level }}</span>
-            <span class="badge badge--{{ project.interest | lower }}">{{ project.interest }}</span>
-            {% for skill in project.skills %}
-            <span class="badge badge--{{ skill | lower }}">{{ skill }}</span>
-            {% endfor %}
-            <span class="badge badge--time">{{ project.time }} effort</span>
+            <!-- Inside <div class="badge-group"> -->
+<span class="badge badge--{{ project.level | lower }}">{{ project.level }}</span>
+<span class="badge badge--{{ project.interest | lower }}">{{ project.interest }}</span>
+
+<!-- ADD THIS NEW DYNAMIC BADGE -->
+<span class="badge badge--effort" data-time="{{ project.time }}">
+    {{ project.time }}
+</span>
+         
           </div>
           <p class="detail-description">{{ project.description }}</p>
         </div>
@@ -109,8 +112,8 @@
           <button class="btn-view-code" id="btn-view-code" aria-label="Open inline code viewer">
             <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="16 18 22 12 16 6" />
-              <polyline points="8 6 2 12 8 18" />
+              <polyline points="16 18 22 12 16 6" </>
+              <polyline points="8 6 2 12 8 18" </>
             </svg>
             View Code
           </button>
@@ -338,6 +341,12 @@
             <button id="btn-mark-complete" class="btn-ghost btn-mark-complete" type="button">Mark Project Complete</button>
           </div>
 
+          <!-- Portfolio diversity widget -->
+          <div class="sidebar-card sidebar-card--portfolio">
+            <h3 class="sidebar-card-title">📊 Portfolio Diversity</h3>
+            <p class="sidebar-card-desc">See how this project fits into your overall skill coverage.</p>
+            <div id="portfolio-analysis-container"></div>
+          </div>
         </aside>
       </div>
     </div>
@@ -381,7 +390,6 @@
     </svg>
     Copied to clipboard!
   </div>
-
   <div class="achievement-toast" id="achievement-toast" role="status" aria-live="polite"></div>
 
   <footer class="footer">

@@ -63,7 +63,7 @@ def test_score_project():
         "interest": "Data",
         "time": "Low"
     }
-    score = score_single_project(
+    score, _ = score_single_project(
         project,
         user_skills=["python"],
         level="Beginner",
@@ -107,18 +107,18 @@ def test_score_coverage_ratio_exact_values():
     project = {"skills": ["Python", "Flask"], "level": "Beginner", "interest": "Data", "time": "Low"}
 
     # 1 of 2 skills matched: coverage = 0.5, score = 1 * 3 * 0.5 = 1.5
-    score = score_single_project(project, ["python"], "Advanced", "Games", "High")
+    score, _ = score_single_project(project, ["python"], "Advanced", "Games", "High")
     assert score == pytest.approx(1.5), f"Expected 1.5 but got {score}"
 
     # 2 of 2 skills matched: coverage = 1.0, score = 2 * 3 * 1.0 = 6.0
-    score = score_single_project(project, ["python", "flask"], "Advanced", "Games", "High")
+    score, _ = score_single_project(project, ["python", "flask"], "Advanced", "Games", "High")
     assert score == pytest.approx(6.0), f"Expected 6.0 but got {score}"
 
 
 def test_score_no_project_skills_does_not_crash():
     """A project with an empty skills list should not raise ZeroDivisionError."""
     project = {"skills": [], "level": "Beginner", "interest": "Data", "time": "Low"}
-    score = score_single_project(project, ["python"], "Beginner", "Data", "Low")
+    score, _ = score_single_project(project, ["python"], "Beginner", "Data", "Low")
     # Skill score is 0, but other criteria still score
     assert score == pytest.approx(WEIGHT_LEVEL + WEIGHT_INTEREST + WEIGHT_TIME)  # 2+2+1 = 5
 
@@ -127,9 +127,9 @@ def test_score_three_skills_partial_coverage():
     """Matching 2 of 3 skills should produce a score between 0-skill and 3-skill matches."""
     project = {"skills": ["Python", "Flask", "SQL"], "level": "Beginner", "interest": "Data", "time": "Low"}
 
-    score_0 = score_single_project(project, ["rust"],               "Advanced", "Games", "High")
-    score_2 = score_single_project(project, ["python", "flask"],    "Advanced", "Games", "High")
-    score_3 = score_single_project(project, ["python", "flask", "sql"], "Advanced", "Games", "High")
+    score_0, _ = score_single_project(project, ["rust"],               "Advanced", "Games", "High")
+    score_2, _ = score_single_project(project, ["python", "flask"],    "Advanced", "Games", "High")
+    score_3, _ = score_single_project(project, ["python", "flask", "sql"], "Advanced", "Games", "High")
 
     assert score_0 == pytest.approx(0)
     assert score_0 < score_2 < score_3, (
@@ -146,7 +146,7 @@ def test_score_single_project_no_match():
         "interest": "Games",
         "time": "High"
     }
-    score = score_single_project(
+    score, _ = score_single_project(
         project,
         user_skills=["python"],
         level="Beginner",
@@ -164,7 +164,7 @@ def test_score_single_project_alias_matching():
         "interest": "Web",
         "time": "Low"
     }
-    score = score_single_project(
+    score, _ = score_single_project(
         project,
         user_skills=["javascript"],
         level="Beginner",
@@ -289,6 +289,7 @@ def test_recommend_api():
     })
 
     assert response.status_code == 200
+
     data = response.get_json()
     assert "projects" in data
 
@@ -572,3 +573,30 @@ if __name__ == "__main__":
     print(f"\n{passed} passed, {failed} failed out of {passed + failed} tests")
     if failed > 0:
         sys.exit(1)
+
+def test_ml_similarity_score_returns_float():
+    from utils.recommender import (
+        ml_similarity_score, parse_skills, _tokenize, 
+        _project_text, _user_text, _idf, _tfidf_vector
+    )
+    projects = load_all_projects()
+    
+    project_documents = [_tokenize(_project_text(p)) for p in projects]
+    user_skills = parse_skills("Python")
+    user_tokens = _tokenize(_user_text(user_skills, "Beginner", "Data", "Low"))
+    idf_scores = _idf(project_documents + [user_tokens])
+    user_vector = _tfidf_vector(user_tokens, idf_scores)
+
+    score = ml_similarity_score(
+        projects[0],
+        user_vector,
+        idf_scores,
+    )
+    assert isinstance(score, float)
+    assert score >= 0
+
+def test_ml_recommendation_prefers_relevant_python_data_project():
+    results = get_recommendations("Python, pandas", "Intermediate", "Data", "High")
+    recs = results.get("recommendations", [])
+    titles = [project["title"] for project in recs]
+    assert any("Data" in title or "Pipeline" in title for title in titles)
