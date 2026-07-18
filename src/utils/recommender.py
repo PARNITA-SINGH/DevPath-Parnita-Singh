@@ -41,10 +41,7 @@ SCORING_WEIGHTS = {
     "time": 1,
 }
 
-WEIGHT_SKILL = SCORING_WEIGHTS["skill"]
-WEIGHT_LEVEL = SCORING_WEIGHTS["level"]
-WEIGHT_INTEREST = SCORING_WEIGHTS["interest"]
-WEIGHT_TIME = SCORING_WEIGHTS["time"]
+
 
 # Common aliases and abbreviations for skills
 # This improves recommendation accuracy by normalizing user input
