@@ -289,6 +289,7 @@ def test_recommend_api():
     })
 
     assert response.status_code == 200
+
     data = response.get_json()
     assert "projects" in data
 
