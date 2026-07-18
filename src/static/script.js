@@ -450,6 +450,7 @@ updateProfileWidgets();
   var skillWrap = document.getElementById("skill-input-wrap");
   var quickPickChips = Array.prototype.slice.call(document.querySelectorAll(".skill-chip"));
   var selectedSkills = [];
+  var skillProficiencies = {};
   var availableSkills = (typeof skills !== "undefined" && Array.isArray(skills))
     ? skills.map(function (item) { return item.label; }).filter(Boolean)
     : quickPickChips.map(function (chip) { return chip.getAttribute("data-skill"); });
@@ -490,7 +491,7 @@ updateProfileWidgets();
     selectedSkills.forEach(function (skill) {
       var chip = document.createElement("span");
       chip.className = "skill-chip-selected";
-      chip.appendChild(document.createTextNode(skill));
+      chip.appendChild(document.createTextNode(skill + " (" + (skillProficiencies[skill] || "Beginner") + ")"));
       var button = document.createElement("button");
       button.type = "button";
       button.className = "skill-chip-remove";
@@ -509,6 +510,8 @@ updateProfileWidgets();
     var skill = canonicalSkill(rawSkill);
     if (!skill || isSelected(skill)) return;
     selectedSkills.push(skill);
+    var proficiencySelect = document.getElementById("skill-proficiency");
+    skillProficiencies[skill] = proficiencySelect ? proficiencySelect.value : "Beginner";
     renderSelectedChips();
     syncSkillsHiddenInput();
     updateQuickPickState();
@@ -518,6 +521,7 @@ updateProfileWidgets();
 
   function removeSkill(skill) {
     selectedSkills = selectedSkills.filter(function (item) { return normalize(item) !== normalize(skill); });
+    delete skillProficiencies[skill];
     renderSelectedChips();
     syncSkillsHiddenInput();
     updateQuickPickState();
@@ -882,7 +886,12 @@ updateProfileWidgets();
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        skills: JSON.stringify(selectedSkills),
+        skills: JSON.stringify(selectedSkills.map(function (skill) {
+          return {
+            skill: skill,
+            proficiency: skillProficiencies[skill] || "Beginner"
+          };
+        })),
         level: document.getElementById("level").value,
         interest: document.getElementById("interest").value,
         time: document.getElementById("time").value,
