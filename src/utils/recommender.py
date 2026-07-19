@@ -1,6 +1,39 @@
 # src/utils/recommender.py
 
-# Grouped scoring weights structure expected by tests/test_basic.py
+import math
+import re
+from collections import Counter
+import functools
+
+import json
+import os
+
+from utils.data_loader import load_all_projects
+
+MAX_RESULTS = 3
+MAX_RELATED = 3
+_CLUSTERS_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "data",
+    "clusters.json",
+)
+
+_cached_clusters = None
+_clusters_loaded = False
+_cached_skill_graph = None
+_skill_graph_loaded = False
+
+def clear_caches():
+    """Clear all in-memory JSON caches."""
+    global _cached_clusters, _clusters_loaded, _cached_skill_graph, _skill_graph_loaded
+    _cached_clusters = None
+    _clusters_loaded = False
+    _cached_skill_graph = None
+    _skill_graph_loaded = False
+
+VALID_LEVELS = {"beginner", "intermediate", "advanced"}
+VALID_INTERESTS = {"web", "data", "education", "automation", "games", "cybersecurity", "devops", "backend", "tools", "productivity", "business logic", "mobile", "machine learning/ai"}
+VALID_TIME_AVAILABILITY = {"low", "medium", "high"}
 SCORING_WEIGHTS = {
     'skill_match': 3,
     'level_match': 2,
