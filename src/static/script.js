@@ -475,6 +475,7 @@ async function updatePortfolioAnalysis() {
   var btnLoading = document.getElementById("btn-loading");
   var resultsSection = document.getElementById("results-section");
   var resultsGrid = document.getElementById("results-grid");
+  var showMoreBtn = document.getElementById("show-more-btn");
   var resultsLoadingEl = document.getElementById("results-loading");
   var resultsEmptyEl = document.getElementById("results-empty");
   var emptyMessageEl = document.getElementById("empty-message");
@@ -770,11 +771,17 @@ async function updatePortfolioAnalysis() {
     return card;
   }
 
+  var allProjects = [];
+  var visibleProjectCount = 3;
+
+  var PROJECTS_PER_LOAD = 3;
+
   function renderResults(projects, message) {
     resultsSection.style.display = "block";
     resultsLoadingEl.style.display = "none";
     resultsGrid.innerHTML = "";
     if (!projects || projects.length === 0) {
+      showMoreBtn.style.display = "none";
       resultsGrid.style.display = "none";
       resultsEmptyEl.style.display = "block";
       if (emptyMessageEl) {
@@ -788,6 +795,19 @@ async function updatePortfolioAnalysis() {
     projects.forEach(function (project) { resultsGrid.appendChild(buildProjectCard(project)); });
     resultsSection.scrollIntoView({ behavior: "smooth" });
   }
+  if (showMoreBtn) {
+      showMoreBtn.addEventListener("click", function () {
+        visibleProjectCount += PROJECTS_PER_LOAD;
+        
+        renderResults(
+          allProjects.slice(0, visibleProjectCount)
+        );
+        
+        if (visibleProjectCount >= allProjects.length) {
+          showMoreBtn.style.display = "none";
+        }
+      });
+    }
 
   skillsInput.setAttribute("role", "combobox");
   skillsInput.setAttribute("aria-expanded", "false");
@@ -870,6 +890,9 @@ async function updatePortfolioAnalysis() {
     clearAllErrors();
     hideSuggestions();
     resultsSection.style.display = "none";
+    showMoreBtn.style.display = "none";
+    allProjects = [];
+    visibleProjectCount = PROJECTS_PER_LOAD;
     if (skillsInput) skillsInput.focus();
   }
 
@@ -943,9 +966,20 @@ async function updatePortfolioAnalysis() {
         setLoadingState(false);
         recordSearch();
         hasSearched = true;
-        renderResults(data.projects || [], data.message);
 
-        // Update URL query parameters so the result is shareable
+        allProjects = data.projects || [];
+        visibleProjectCount = PROJECTS_PER_LOAD;
+
+        renderResults(
+          allProjects.slice(0, visibleProjectCount),data.message);
+  
+        if (allProjects.length > visibleProjectCount) {
+          showMoreBtn.style.display = "inline-block";
+        } else {
+          showMoreBtn.style.display = "none";
+        }
+
+         // Update URL query parameters so the result is shareable
         try {
           var params = new URLSearchParams();
           params.set("skills", JSON.stringify(selectedSkills));
@@ -953,7 +987,7 @@ async function updatePortfolioAnalysis() {
           params.set("interest", document.getElementById("interest").value);
           params.set("time", document.getElementById("time").value);
           window.history.replaceState(null, "", "?" + params.toString());
-        } catch (e) {}
+      } catch (e) {}
       })
       .catch(function (err) {
         setLoadingState(false);
