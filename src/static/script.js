@@ -728,9 +728,35 @@ async function updatePortfolioAnalysis() {
     title.className = "project-card-title";
     title.textContent = project.title;
 
-    var desc = document.createElement("div");
-    desc.className = "project-card-description";
-    desc.textContent = project.description;
+    var desc = document.createElement("p");
+    desc.className = "project-card-desc";
+    var descText = document.createElement("span");
+    descText.className = "project-card-desc-text";
+    descText.textContent = truncate(project.description, 120);
+    desc.appendChild(descText);
+
+    if (project.description && project.description.length > 120) {
+      var expanded = false;
+      var readMore = document.createElement("button");
+      readMore.type = "button";
+      readMore.className = "read-more-btn";
+      readMore.setAttribute("aria-label", "Read full description for " + project.title);
+      readMore.setAttribute("aria-expanded", "false");
+      var readMoreLabel = document.createElement("span");
+      readMoreLabel.textContent = "Read more";
+      readMore.appendChild(readMoreLabel);
+      readMore.addEventListener("click", function () {
+        expanded = !expanded;
+        descText.textContent = expanded ? project.description : truncate(project.description, 120);
+        readMoreLabel.textContent = expanded ? "Read less" : "Read more";
+        readMore.setAttribute("aria-expanded", expanded ? "true" : "false");
+        readMore.setAttribute(
+          "aria-label",
+          (expanded ? "Collapse description for " : "Read full description for ") + project.title
+        );
+      });
+      desc.appendChild(readMore);
+    }
 
     var tags = document.createElement("div");
     tags.className = "project-card-tags";
