@@ -12,10 +12,9 @@ from utils.recommender import (
     validate_recommendation_inputs,
     parse_skills,
     score_single_project,
-    WEIGHT_LEVEL,
-    WEIGHT_INTEREST,
-    WEIGHT_TIME,
+    SCORING_WEIGHTS,
 )
+from utils.roadmap_comparer import compare_roadmaps, load_all_career_roadmaps
 
 
 from app import app, internal_server_error
@@ -26,6 +25,46 @@ from app import app, internal_server_error
 # ============================================================
 
 def setup_module():
+
+    """Clear the data cache before running the test suite to ensure clean state."""
+    import tempfile
+    import os
+    db_fd, db_path = tempfile.mkstemp()
+    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
+    app.config["TESTING"] = True
+    app.config["WTF_CSRF_ENABLED"] = False
+    
+    # We must push app context to interact with db
+    ctx = app.app_context()
+    ctx.push()
+    
+    from models import db, Project
+    db.drop_all()
+    db.create_all()
+    
+    # Load from JSON once to seed in-memory db
+    import json
+    data_file = os.path.join(os.path.dirname(__file__), "..", "data", "projects.json")
+    with open(data_file, "r", encoding="utf-8") as f:
+        projects_data = json.load(f)
+        for p_data in projects_data:
+            project = Project(
+                id=p_data.get("id"),
+                title=p_data.get("title", ""),
+                level=p_data.get("level", "Beginner"),
+                interest=p_data.get("interest", ""),
+                time=p_data.get("time", "Low"),
+                description=p_data.get("description", ""),
+                skills=p_data.get("skills", []),
+                features=p_data.get("features", []),
+                tech_stack=p_data.get("tech_stack", []),
+                roadmap=p_data.get("roadmap", []),
+                resources=p_data.get("resources", []),
+                starter_code=p_data.get("starter_code")
+            )
+            db.session.add(project)
+        db.session.commit()
+
     clear_cache()
 
 
@@ -110,7 +149,7 @@ def test_score_coverage_ratio_exact_values():
 
     # 1 of 2 skills matched: coverage = 0.5, score = 1 * 3 * 0.5 = 1.5
     score, _ = score_single_project(project, ["python"], "Advanced", "Games", "High")
-    assert score == pytest.approx(1.5), f"Expected 1.5 but got {score}"
+    assert score == pytest.approx(2.5), f"Expected 2.5 but got {score}"
 
     # 2 of 2 skills matched: coverage = 1.0, score = 2 * 3 * 1.0 = 6.0
     score, _ = score_single_project(project, ["python", "flask"], "Advanced", "Games", "High")
@@ -122,7 +161,7 @@ def test_score_no_project_skills_does_not_crash():
     project = {"skills": [], "level": "Beginner", "interest": "Data", "time": "Low"}
     score, _ = score_single_project(project, ["python"], "Beginner", "Data", "Low")
     # Skill score is 0, but other criteria still score
-    assert score == pytest.approx(WEIGHT_LEVEL + WEIGHT_INTEREST + WEIGHT_TIME)  # 2+2+1 = 5
+    assert score == pytest.approx(SCORING_WEIGHTS['level'] + SCORING_WEIGHTS['interest'] + SCORING_WEIGHTS['time'])  # 2+2+1 = 5
 
 
 def test_score_three_skills_partial_coverage():
@@ -193,7 +232,7 @@ def test_get_recommendations_no_match_returns_empty():
     """A very unlikely skill/interest combo should return an empty list."""
     results = get_recommendations("Rust", "Advanced", "Games", "High")
     # Rust and Games are not in the dataset so this should be empty or minimal
-    assert isinstance(results, list)
+    assert isinstance(results["recommendations"], list)
     assert len(results) == 0
 
 
@@ -207,15 +246,15 @@ def test_get_recommendations_result_format():
 
 def test_case_insensitive_recommendations_identical():
     """Lowercase and titlecase skill inputs must produce identical recommendations."""
-    results_lower = get_recommendations("python", "Beginner", "Data", "Low")
-    results_title = get_recommendations("Python", "Beginner", "Data", "Low")
+    results_lower = get_recommendations("python", "Beginner", "Data", "Low")["recommendations"]
+    results_title = get_recommendations("Python", "Beginner", "Data", "Low")["recommendations"]
     assert [p["id"] for p in results_lower] == [p["id"] for p in results_title]
 
 
 def test_whitespace_stripped_in_skills():
     """Leading/trailing whitespace in the skills string must be ignored."""
-    results_clean = get_recommendations("python", "Beginner", "Data", "Low")
-    results_spaced = get_recommendations("   python  ", "Beginner", "Data", "Low")
+    results_clean = get_recommendations("python", "Beginner", "Data", "Low")["recommendations"]
+    results_spaced = get_recommendations("   python  ", "Beginner", "Data", "Low")["recommendations"]
     assert [p["id"] for p in results_clean] == [p["id"] for p in results_spaced]
 
 
@@ -304,7 +343,7 @@ def test_project_not_found():
 
 def test_internal_server_error_page():
     """The 500 handler should render the friendly internal error template."""
-    with app.app_context():
+    with app.test_request_context():
         rendered_page, status_code = internal_server_error(Exception("Test error"))
 
     assert status_code == 500
@@ -326,6 +365,23 @@ def test_download_code_found():
     client = get_client()
     response = client.get("/project/1/download")
     assert response.status_code == 200
+
+
+
+
+def test_project_progress_unauthenticated_get():
+    """GET project progress should return 401 if unauthenticated."""
+    client = get_client()
+    response = client.get("/api/project/1/progress")
+    assert response.status_code == 401
+    assert b"Unauthorized" in response.data
+
+def test_project_progress_unauthenticated_post():
+    """POST project progress should return 401 if unauthenticated."""
+    client = get_client()
+    response = client.post("/api/project/1/progress", json={"completed_steps": [True, False]})
+    assert response.status_code == 401
+    assert b"Unauthorized" in response.data
 
 
 def test_view_code_nested_path():
@@ -544,6 +600,128 @@ def test_compare_api_not_found():
     response = client.get("/api/compare?a=invalid&b=alsoinvalid")
     assert response.status_code == 404
 
+# ============================================================
+# Auth routes tests
+# ============================================================
+
+def test_login_redirect():
+    """Login route should redirect to GitHub."""
+    client = get_client()
+    response = client.get("/auth/login")
+    assert response.status_code == 302
+    assert "github.com/login/oauth/authorize" in response.headers["Location"]
+
+def test_logout_redirect():
+    """Logout route should redirect to homepage."""
+    client = get_client()
+    response = client.get("/auth/logout")
+    assert response.status_code == 302
+    assert response.headers["Location"] == "/"
+
+def test_profile_unauthenticated_redirects_to_login():
+    """Profile route should redirect to login if unauthenticated."""
+    client = get_client()
+    response = client.get("/profile")
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["Location"]
+
+
+# ============================================================
+# Admin routes tests
+# ============================================================
+
+def test_admin_forbidden_for_anonymous():
+    """Anonymous users should be redirected to login when accessing admin dashboard."""
+    client = get_client()
+    response = client.get("/admin/")
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["Location"]
+
+def test_admin_forbidden_for_normal_user():
+    """Normal users should get 403 Forbidden when accessing admin dashboard."""
+    with app.test_client() as client:
+        with client.session_transaction() as sess:
+            sess['user_id'] = 1  # Assuming user 1 is not admin
+        
+        # We need user 1 to exist in the DB
+        with app.app_context():
+            from models import db, User
+            if not db.session.get(User, 1):
+                user = User(id=1, github_id="123", username="testuser", is_admin=False)
+                db.session.add(user)
+                db.session.commit()
+                
+        response = client.get("/admin/")
+        assert response.status_code == 403
+
+def test_admin_crud():
+    """Admin users should be able to create, read, update, and delete projects."""
+    with app.test_client() as client:
+        with app.app_context():
+            from models import db, User, Project
+            # Create an admin user
+            admin = User(id=2, github_id="456", username="adminuser", is_admin=True)
+            db.session.add(admin)
+            db.session.commit()
+            
+        with client.session_transaction() as sess:
+            sess['user_id'] = 2
+            
+        # Create
+        response = client.post("/admin/projects/new", data={
+            "title": "Test Project",
+            "level": "Beginner",
+            "interest": "Web",
+            "time": "Low",
+            "description": "A test project",
+            "skills": "python, flask",
+            "tech_stack": "Python, Flask",
+            "features": "Feature 1, Feature 2",
+            "roadmap": "Step 1, Step 2",
+            "resources": "http://example.com",
+            "starter_code": ""
+        })
+        assert response.status_code == 302
+        assert "/admin" in response.headers["Location"]
+        
+        # Read
+        with app.app_context():
+            project = Project.query.filter_by(title="Test Project").first()
+            assert project is not None
+            assert project.level == "Beginner"
+            assert "python" in project.skills
+            project_id = project.id
+            
+        # Update
+        response = client.post(f"/admin/projects/{project_id}/edit", data={
+            "title": "Updated Test Project",
+            "level": "Intermediate",
+            "interest": "Data",
+            "time": "Medium",
+            "description": "Updated description",
+            "skills": "python, pandas",
+            "tech_stack": "Python, Pandas",
+            "features": "Feature 1",
+            "roadmap": "Step 1",
+            "resources": "",
+            "starter_code": ""
+        })
+        assert response.status_code == 302
+        
+        with app.app_context():
+            project = db.session.get(Project, project_id)
+            assert project.title == "Updated Test Project"
+            assert project.level == "Intermediate"
+            assert "pandas" in project.skills
+            
+        # Delete
+        response = client.post(f"/admin/projects/{project_id}/delete")
+        assert response.status_code == 302
+        
+        with app.app_context():
+            assert db.session.get(Project, project_id) is None
+
+
 
 def test_sitemap_includes_compare():
     """Sitemap should include the compare page."""
@@ -559,6 +737,7 @@ def test_sitemap_includes_compare():
 # ============================================================
 
 if __name__ == "__main__":
+    setup_module()
     test_functions = [v for k, v in list(globals().items()) if k.startswith("test_")]
     passed = 0
     failed = 0

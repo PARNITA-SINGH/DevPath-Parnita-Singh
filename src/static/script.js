@@ -1175,9 +1175,9 @@ async function updatePortfolioAnalysis() {
   var progressFill = document.getElementById("roadmap-progress-fill");
   var progressText = document.getElementById("roadmap-progress-text");
   var progressBar = document.querySelector(".roadmap-progress-bar");
-  var roadmapStorageKey = "devpath-roadmap-progress-" + PROJECT_ID;
+  var roadmapStorageKey = "devpath-roadmap-progress-" + (typeof PROJECT_ID !== 'undefined' ? PROJECT_ID : "");
 
-  function updateRoadmapProgress() {
+  function updateRoadmapProgress(skipSave) {
     if (!roadmapCheckboxes.length) return;
     var completedCount = roadmapCheckboxes.filter(function (checkbox) { return checkbox.checked; }).length;
     var percent = Math.round((completedCount / roadmapCheckboxes.length) * 100);
@@ -1185,10 +1185,10 @@ async function updatePortfolioAnalysis() {
       var step = checkbox.closest(".roadmap-step");
       if (step) step.classList.toggle("completed", checkbox.checked);
     });
+    
     if (progressFill) progressFill.style.width = percent + "%";
     if (progressText) progressText.textContent = percent + "% completed";
     if (progressBar) progressBar.setAttribute("aria-valuenow", String(percent));
-
     // Disable completion button unless all steps are completed
     var completionBtn = document.getElementById("btn-mark-complete");
     if (completionBtn && typeof PROJECT_ID !== "undefined") {
@@ -1208,23 +1208,49 @@ async function updatePortfolioAnalysis() {
       }
     }
 
-    try {
-      localStorage.setItem(roadmapStorageKey, JSON.stringify(roadmapCheckboxes.map(function (checkbox) {
-        return checkbox.checked;
-      })));
-    } catch (err) {}
+    if (skipSave === true) return;
+
+    var completedStates = roadmapCheckboxes.map(function (checkbox) {
+      return checkbox.checked;
+    });
+
+    if (typeof USER_LOGGED_IN !== 'undefined' && USER_LOGGED_IN) {
+      fetch("/api/project/" + PROJECT_ID + "/progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completed_steps: completedStates })
+      }).catch(console.error);
+    } else {
+      try {
+        localStorage.setItem(roadmapStorageKey, JSON.stringify(completedStates));
+      } catch (err) {}
+    }
   }
 
-  try {
-    var saved = JSON.parse(localStorage.getItem(roadmapStorageKey) || "[]");
+  function renderRoadmapFromState(saved) {
     roadmapCheckboxes.forEach(function (checkbox, index) {
       checkbox.checked = !!saved[index];
     });
-  } catch (err) {}
-  roadmapCheckboxes.forEach(function (checkbox) {
-    checkbox.addEventListener("change", updateRoadmapProgress);
-  });
-  updateRoadmapProgress();
+    updateRoadmapProgress(true);
+  }
+
+  if (roadmapCheckboxes.length > 0) {
+    if (typeof USER_LOGGED_IN !== 'undefined' && USER_LOGGED_IN) {
+      fetch("/api/project/" + PROJECT_ID + "/progress")
+        .then(function(res) { return res.json(); })
+        .then(function(data) { renderRoadmapFromState(data.completed_steps || []); })
+        .catch(console.error);
+    } else {
+      try {
+        var saved = JSON.parse(localStorage.getItem(roadmapStorageKey) || "[]");
+        renderRoadmapFromState(saved);
+      } catch (err) {}
+    }
+
+    roadmapCheckboxes.forEach(function (checkbox) {
+      checkbox.addEventListener("change", function() { updateRoadmapProgress(false); });
+    });
+  }
 
   // Initialize expandable roadmap details
   var stepToggles = document.querySelectorAll(".btn-step-details-toggle");
