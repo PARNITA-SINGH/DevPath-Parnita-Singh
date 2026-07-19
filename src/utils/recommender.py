@@ -42,6 +42,20 @@ SCORING_WEIGHTS = {
     "time": 1,
 }
 
+SYNERGY_MAP = {
+    frozenset(["react", "node"]): 1.5,
+    frozenset(["react", "node.js"]): 1.5,
+    frozenset(["python", "django"]): 1.5,
+    frozenset(["python", "flask"]): 1.5,
+    frozenset(["html", "css", "javascript"]): 1.5,
+    frozenset(["vue", "node"]): 1.5,
+    frozenset(["angular", "node"]): 1.5,
+}
+
+WEIGHT_SKILL = SCORING_WEIGHTS["skill"]
+WEIGHT_LEVEL = SCORING_WEIGHTS["level"]
+WEIGHT_INTEREST = SCORING_WEIGHTS["interest"]
+WEIGHT_TIME = SCORING_WEIGHTS["time"]
 
 
 # Common aliases and abbreviations for skills
@@ -241,24 +255,23 @@ def score_single_project(project, user_skills, level, interest, time_availabilit
     score = 0
 
     # Compare user's skills against the project's required skills
-    project_skills = [SKILL_ALIASES.get(_normalize_skill(s), _normalize_skill(s)) for s in project.get("skills", [])]
-    matched_skills = sum(1 for skill in user_skills if skill in project_skills)
-    proficiency_weights = {
-        "beginner": 1.0,
-        "intermediate": 1.5,
-        "advanced": 2.0,
-    }
-    skill_proficiencies = skill_proficiencies or {}
-    weighted_skill_score = sum(
-        proficiency_weights.get(skill_proficiencies.get(skill, "Beginner").lower(), 1.0)
-        for skill in user_skills
-        if skill in project_skills
-    )
+    project_skills = [SKILL_ALIASES.get(s.lower(), s.lower()) for s in project.get("skills", [])]
+    matched_skills = [skill for skill in user_skills if skill in project_skills]
+    num_matched = len(matched_skills)
+    
+    skill_score = num_matched * SCORING_WEIGHTS["skill"]
     if project_skills:
-        coverage = matched_skills / len(project_skills)
-        score += weighted_skill_score * SCORING_WEIGHTS["skill"] * coverage
-    else:
-        score += weighted_skill_score * SCORING_WEIGHTS["skill"]
+        coverage = num_matched / len(project_skills)
+        skill_score *= coverage
+        
+    # Apply Synergy Multiplier
+    synergy_multiplier = 1.0
+    matched_set = set(matched_skills)
+    for synergy_group, multiplier in SYNERGY_MAP.items():
+        if synergy_group.issubset(matched_set):
+            synergy_multiplier = max(synergy_multiplier, multiplier)
+            
+    score += skill_score * synergy_multiplier
 
     level_match = False
     if project.get("level", "").lower() == level.lower():
@@ -282,15 +295,7 @@ def score_single_project(project, user_skills, level, interest, time_availabilit
         
     score += gap_boost(user_skills, project_skills, graph)
 
-    matched_skills_list = [skill for skill in user_skills if skill in project_skills]
-    match_details = {
-        "matched_skills": matched_skills_list,
-        "level": level_match,
-        "interest": interest_match,
-        "time": time_match
-    }
-
-    return score, match_details
+    return score, synergy_multiplier > 1.0
 
 # ---------------------------------------------------------------------------
 # Skill graph helpers
@@ -515,7 +520,14 @@ def get_recommendations(
     scored_projects = []
     graph = _load_skill_graph()
     for project in all_projects:
-        score_result = score_single_project(
+        rule_score, synergy_applied = score_single_project(
+            project,
+            user_skills,
+            level,
+            interest,
+            time_availability,
+        )
+        similarity_score = ml_similarity_score(
             project,
             user_skills,
             level,
@@ -544,18 +556,11 @@ def get_recommendations(
             )
 
         final_score = rule_score + similarity_score
-
-        # Check relevance: project must match at least one user skill,
-        # have a positive boost from the skill graph, or have a significant
-        # ML semantic match (similarity_score >= 0.15).
-        project_skills = [SKILL_ALIASES.get(s.lower(), s.lower()) for s in project.get("skills", [])]
-        matched_skills = sum(1 for skill in user_skills if skill in project_skills)
-        boost = gap_boost(user_skills, project_skills, graph)
-        is_relevant = (matched_skills > 0) or (boost > 0) or (similarity_score >= 0.15)
-
-        if final_score > 0 and is_relevant:
+        if final_score > 0:
+            proj_copy = project.copy()
+            proj_copy["synergy_applied"] = synergy_applied
             scored_projects.append({
-                "project": project,
+                "project": proj_copy,
                 "score": final_score,
                 "match_details": match_details
             })

@@ -738,6 +738,9 @@ async function updatePortfolioAnalysis() {
     (project.skills || []).forEach(function (skill) { tags.appendChild(createTag(skill, "skill")); });
     tags.appendChild(createTag(project.level, project.level));
     tags.appendChild(createTag("Time: " + project.time, "time"));
+    if (project.synergy_applied) {
+      tags.appendChild(createTag("Synergy Match ✨", "synergy"));
+    }
 
     var footer = document.createElement("div");
     footer.className = "project-card-footer";
